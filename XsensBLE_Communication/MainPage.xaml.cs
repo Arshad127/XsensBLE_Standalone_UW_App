@@ -28,9 +28,16 @@ namespace XsensBLE_Communication
     public sealed partial class MainPage : Page
     {
         private ObservableCollection<BluetoothLEDeviceDisplay> KnownDevices = new ObservableCollection<BluetoothLEDeviceDisplay>();
+
+        private ObservableCollection<BluetoothLEDeviceDisplay> ConnectedDevices = new ObservableCollection<BluetoothLEDeviceDisplay>();
+
         private List<DeviceInformation> UnknownDevices = new List<DeviceInformation>();
 
         private DeviceWatcher deviceWatcher;
+
+        public string SelectedBleDeviceId;
+
+        public string SelectedBleDeviceName = "No device selected";
 
         #region UI related items
 
@@ -220,7 +227,7 @@ namespace XsensBLE_Communication
                         // Make sure device isn't already present in the list.
                         if (FindBluetoothLEDeviceDisplay(deviceInfo.Id) == null)
                         {
-                            if (deviceInfo.Name != string.Empty)
+                            if (deviceInfo.Name != string.Empty && deviceInfo.Name.Equals(Constants.targetDeviceName))
                             {
                                 // If device has a friendly name display it immediately.
                                 KnownDevices.Add(new BluetoothLEDeviceDisplay(deviceInfo));
@@ -262,7 +269,7 @@ namespace XsensBLE_Communication
                         {
                             deviceInfo.Update(deviceInfoUpdate);
                             // If device has been updated with a friendly name it's no longer unknown.
-                            if (deviceInfo.Name != String.Empty)
+                            if (deviceInfo.Name != String.Empty && deviceInfo.Name.Equals(Constants.targetDeviceName))
                             {
                                 KnownDevices.Add(new BluetoothLEDeviceDisplay(deviceInfo));
                                 UnknownDevices.Remove(deviceInfo);
