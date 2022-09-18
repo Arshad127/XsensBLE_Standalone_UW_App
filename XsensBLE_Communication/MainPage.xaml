@@ -5,9 +5,31 @@
     xmlns:local="using:XsensBLE_Communication"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:sdkTemplate="using:SDKTemplate"
     mc:Ignorable="d"
     Background="Black">
-
+    <Page.Resources>
+        <DataTemplate x:Key="ResultsListViewTemplate" x:DataType="sdkTemplate:BluetoothLEDeviceDisplay">
+            <Grid Margin="5">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*" MinWidth="100"/>
+                </Grid.ColumnDefinitions>
+                <Image Source="{x:Bind GlyphBitmapImage, Mode=OneWay}" Stretch="UniformToFill" Grid.Column="0" Height="40" Width="40" Margin="5" VerticalAlignment="Top"/>
+                <StackPanel Grid.Column="1" Margin="5">
+                    <TextBlock TextWrapping="WrapWholeWords">
+                        Name: <Run Text="{x:Bind Name, Mode=OneWay}" FontWeight="Bold"/>
+                    </TextBlock>
+                    <TextBlock>
+                        IsPaired: <Run Text="{x:Bind IsPaired, Mode=OneWay}"/>, IsConnected: <Run Text="{x:Bind IsConnected, Mode=OneWay}"/>, IsConnectable:<Run Text="{x:Bind IsConnectable, Mode=OneWay}"/>
+                    </TextBlock>
+                    <TextBlock>
+                        Address: <Run Text="{x:Bind Id, Mode=OneWay}"/>
+                    </TextBlock>
+                </StackPanel>
+            </Grid>
+        </DataTemplate>
+    </Page.Resources>
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="20"/>
@@ -35,8 +57,8 @@
         <Button x:Name="ResetHeadingButton" Grid.Column="3" Grid.Row="1" Content="Reset Heading" Click="ResetHeadingButton_Click"  HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" Background="White" Foreground="Black"/>
         <Button x:Name="SyncButton" Grid.Column="4" Grid.Row="1" Content="Synchronise" Click="SyncButton_Click"  HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" Background="White" Foreground="Black"/>
         <Button x:Name="StreamingButton" Grid.Column="5" Grid.Row="1" Content="Start Stream" Click="StreamingButton_Click"  HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" Background="White" Foreground="Black"/>
-        <ListView x:Name="DeviceListBox" Grid.Row ="2" Grid.Column="1" Grid.ColumnSpan="4" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" BorderBrush="Red" BorderThickness="1,1,1,1" Foreground="White"/>
-        <TextBox x:Name="StreamBox" Grid.Row="2" Grid.Column="5" Grid.ColumnSpan="3" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" BorderBrush="Red" BorderThickness="1,1,1,1" Background="{x:Null}" Foreground="White"/>
+        <ListView x:Name="DeviceListBox" Grid.Row ="2" Grid.Column="1" Grid.ColumnSpan="5" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" BorderBrush="Red" BorderThickness="1,1,1,1" Foreground="White" ItemTemplate="{StaticResource ResultsListViewTemplate}" ItemsSource="{x:Bind KnownDevices, Mode=OneWay}"/>
+        <TextBox x:Name="StreamBox" Grid.Row="2" Grid.Column="6" Grid.ColumnSpan="2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" BorderBrush="Red" BorderThickness="1,1,1,1" Background="{x:Null}" Foreground="White"/>
         <TextBox x:Name="MessageBox" Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="7"  HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" BorderBrush="Red" BorderThickness="1,1,1,1" Foreground="White"/>
     </Grid>
 </Page>
