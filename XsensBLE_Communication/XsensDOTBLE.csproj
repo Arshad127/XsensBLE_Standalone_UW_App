@@ -119,6 +119,7 @@
     <Compile Include="App.xaml.cs">
       <DependentUpon>App.xaml</DependentUpon>
     </Compile>
+    <Compile Include="ConnectedBLEDevice.cs" />
     <Compile Include="Constants.cs" />
     <Compile Include="DispatcherTaskExtensions.cs" />
     <Compile Include="DisplayHelpers.cs" />

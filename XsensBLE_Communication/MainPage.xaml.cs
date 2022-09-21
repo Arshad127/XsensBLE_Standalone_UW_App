@@ -1,10 +1,14 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
+using System.Threading;
+using System.Threading.Tasks;
+using Windows.Devices.Bluetooth.GenericAttributeProfile;
 using Windows.Devices.Enumeration;
 using Windows.Foundation;
 using Windows.Foundation.Collections;
@@ -17,6 +21,7 @@ using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
 using SDKTemplate;
 using Windows.UI.Core;
+using Windows.Devices.Bluetooth;
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
 
@@ -27,12 +32,19 @@ namespace XsensBLE_Communication
     /// </summary>
     public sealed partial class MainPage : Page
     {
-        private ObservableCollection<BluetoothLEDeviceDisplay> KnownDevices = new ObservableCollection<BluetoothLEDeviceDisplay>();
+        #region Error Codes
+        readonly int E_BLUETOOTH_ATT_WRITE_NOT_PERMITTED = unchecked((int)0x80650003);
+        readonly int E_BLUETOOTH_ATT_INVALID_PDU = unchecked((int)0x80650004);
+        readonly int E_ACCESSDENIED = unchecked((int)0x80070005);
+        readonly int E_DEVICE_NOT_AVAILABLE = unchecked((int)0x800710df); // HRESULT_FROM_WIN32(ERROR_DEVICE_NOT_AVAILABLE)
+        #endregion
 
+        private ObservableCollection<BluetoothLEDeviceDisplay> KnownDevices = new ObservableCollection<BluetoothLEDeviceDisplay>();
         private ObservableCollection<BluetoothLEDeviceDisplay> ConnectedDevices = new ObservableCollection<BluetoothLEDeviceDisplay>();
+        private ConcurrentQueue<string> messageQueue = new ConcurrentQueue<string>();
+        private string allMessages = "";
 
         private List<DeviceInformation> UnknownDevices = new List<DeviceInformation>();
-
         private DeviceWatcher deviceWatcher;
 
         public string SelectedBleDeviceId;
@@ -47,11 +59,16 @@ namespace XsensBLE_Communication
             // Otherwise, schedule a task on the UI thread to perform the update.
             if (Dispatcher.HasThreadAccess)
             {
-                MessageBox.Text = strMessage;
+                allMessages = strMessage + "\n" + allMessages;
+                MessageBox.Text = allMessages;
             }
             else
             {
-                var task = Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () => MessageBox.Text = strMessage);
+                var task = Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
+                {
+                    allMessages = strMessage + "\n" + allMessages;
+                    MessageBox.Text = allMessages;
+                });
             }
         }
 
@@ -59,7 +76,7 @@ namespace XsensBLE_Communication
         public MainPage()
         {
             this.InitializeComponent();
-            MessageBox.Text = "[INFO] Message Box";
+            NotifyUser("[INFO] Message Box");
             StreamBox.Text = "Streaming Result Box";
         }
 
@@ -70,13 +87,13 @@ namespace XsensBLE_Communication
             {
                 StartBleDeviceWatcher();
                 DiscoveringButton.Content = "Stop discovering";
-                NotifyUser($"[INFO] Device watcher started.");
+                NotifyUser("[INFO] Device watcher started.");
             }
             else
             {
                 StopBleDeviceWatcher();
                 DiscoveringButton.Content = "Discover";
-                NotifyUser($"[INFO] Device watcher stopped.");
+                NotifyUser("[INFO] Device watcher stopped.");
             }
             
         }
@@ -93,7 +110,7 @@ namespace XsensBLE_Communication
 
             isBusy = true;
 
-            NotifyUser("Pairing started. Please wait...");
+            NotifyUser("[INFO] Pairing started. Please wait...");
 
             // For more information about device pairing, including examples of
             // customizing the pairing process, see the DeviceEnumerationAndPairing sample.
@@ -102,20 +119,26 @@ namespace XsensBLE_Communication
             var bleDeviceDisplay = DeviceListBox.SelectedItem as BluetoothLEDeviceDisplay;
 
             // BT_Code: Pair the currently selected device.
-            DevicePairingResult result = await bleDeviceDisplay.DeviceInformation.Pairing.PairAsync();
-            NotifyUser($"Pairing result = {result.Status}");
+            DevicePairingResult resultPair = await bleDeviceDisplay.DeviceInformation.Pairing.PairAsync();
+            NotifyUser($"[INFO] Pairing result = {resultPair.Status}");
 
-            if (result.Status == DevicePairingResultStatus.Paired || result.Status == DevicePairingResultStatus.AlreadyPaired)
+            if (resultPair.Status == DevicePairingResultStatus.Paired || resultPair.Status == DevicePairingResultStatus.AlreadyPaired)
             {
-                NotifyUser($"Time to connect");
+                NotifyUser($"[INFO] Pairing done, now connecting to device");
+                // here we call the connection method
+                await ConnectBLEDevice(bleDeviceDisplay.DeviceInformation);
+
             }
 
+
+
+            NotifyUser($"[INFO] Connection Established");
             isBusy = false;
         }
 
         private void ResetHeadingButton_Click(object sender, RoutedEventArgs e)
         {
-
+            NotifyUser("[WARN] Button remapped to reading battery levels");
         }
 
         private void SyncButton_Click(object sender, RoutedEventArgs e)
@@ -337,6 +360,102 @@ namespace XsensBLE_Communication
 
         #endregion
 
+        #region Device Connection Methods
+        private GattCharacteristic selectedCharacteristic;
+        private GattCharacteristic registeredCharacteristic;
+        private GattPresentationFormat presentationFormat;
+        private BluetoothLEDevice bluetoothLeDevice = null;
+        private bool subscribedForNotifications = false;
+        private GattDeviceService batteryService = null;
+        private GattCharacteristic batteryCharacteristic = null;
+
+        private async Task<bool> ClearBluetoothLEDeviceAsync()
+        {
+            if (subscribedForNotifications)
+            {
+                // Need to clear the CCCD from the remote device so we stop receiving notifications
+                var result = await registeredCharacteristic.WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue.None);
+                if (result != GattCommunicationStatus.Success)
+                {
+                    return false;
+                }
+                else
+                {
+                    selectedCharacteristic.ValueChanged -= Characteristic_ValueChanged;
+                    subscribedForNotifications = false;
+                }
+            }
+            bluetoothLeDevice?.Dispose();
+            bluetoothLeDevice = null;
+            return true;
+        }
+
+        private async Task ConnectBLEDevice(DeviceInformation inDeviceInformation)
+        {
+            if (!await ClearBluetoothLEDeviceAsync())
+            {
+                NotifyUser("[ERR] Unable to reset state, try again.");
+                return;
+            }
+
+            try
+            {
+                // BT_Code: BluetoothLEDevice.FromIdAsync must be called from a UI thread because it may prompt for consent.
+                bluetoothLeDevice = await BluetoothLEDevice.FromIdAsync(inDeviceInformation.Id);
+
+                if (bluetoothLeDevice == null)
+                {
+                    NotifyUser($"[ERR] Failed to connect to device.");
+                }
+            }
+            catch (Exception ex) when (ex.HResult == E_DEVICE_NOT_AVAILABLE)
+            {
+                NotifyUser("[ERR] Bluetooth radio is not on.");
+            }
+
+            if (bluetoothLeDevice != null)
+            {
+                // Note: BluetoothLEDevice.GattServices property will return an empty list for unpaired devices. For all uses we recommend using the GetGattServicesAsync method.
+                // BT_Code: GetGattServicesAsync returns a list of all the supported services of the device (even if it's not paired to the system).
+                // If the services supported by the device are expected to change during BT usage, subscribe to the GattServicesChanged event.
+                GattDeviceServicesResult serviceResult = await bluetoothLeDevice.GetGattServicesAsync(BluetoothCacheMode.Uncached);
+
+                if (serviceResult.Status == GattCommunicationStatus.Success)
+                {
+                    var services = serviceResult.Services;
+
+                    foreach (var service in services)
+                    {
+                        if (service.Uuid.Equals(Constants.BatteryServiceUuid))
+                        {
+                            batteryService = service;
+                            Debug.WriteLine("[ERR] The battery service was found");
+                        }
+                    }
+
+                    NotifyUser(String.Format($"[INFO] Found {services.Count} services including {batteryService.Uuid}"));
+                }
+                else
+                {
+                    NotifyUser("[ERR] Device unreachable");
+                }
+            }
+
+
+
+        }
+
+        private async void Characteristic_ValueChanged(GattCharacteristic sender, GattValueChangedEventArgs args)
+        {
+            NotifyUser("[ERR] Characteristic Value was changed");
+            // BT_Code: An Indicate or Notify reported that the value has changed.
+            // Display the new value with a timestamp.
+            //var newValue = FormatValueByPresentation(args.CharacteristicValue, presentationFormat);
+            //var message = $"Value at {DateTime.Now:hh:mm:ss.FFF}: {newValue}";
+            //await Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () => CharacteristicLatestValue.Text = message);
+        }
+
+        #endregion
 
 
     }

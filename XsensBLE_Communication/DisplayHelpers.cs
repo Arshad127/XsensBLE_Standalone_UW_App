@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using Windows.Devices.Bluetooth.GenericAttributeProfile;
 using Windows.Devices.Enumeration;
 using Windows.Storage.Streams;
@@ -72,6 +73,9 @@ namespace SDKTemplate
             return baseUuid == bluetoothBaseUuid;
         }
     }
+
+
+
 
     /// <summary>
     ///     Display class used to represent a BluetoothLEDevice in the Device list

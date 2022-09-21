@@ -29,13 +29,15 @@
                 </StackPanel>
             </Grid>
         </DataTemplate>
+
+
     </Page.Resources>
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="20"/>
             <RowDefinition Height="40"/>
             <RowDefinition Height="*"/>
-            <RowDefinition Height="60"/>
+            <RowDefinition Height="350"/>
             <RowDefinition Height="20"/>
         </Grid.RowDefinitions>
 
@@ -59,6 +61,6 @@
         <Button x:Name="StreamingButton" Grid.Column="5" Grid.Row="1" Content="Start Stream" Click="StreamingButton_Click"  HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" Background="White" Foreground="Black"/>
         <ListView x:Name="DeviceListBox" Grid.Row ="2" Grid.Column="1" Grid.ColumnSpan="5" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" BorderBrush="Red" BorderThickness="1,1,1,1" Foreground="White" ItemTemplate="{StaticResource ResultsListViewTemplate}" ItemsSource="{x:Bind KnownDevices, Mode=OneWay}"/>
         <TextBox x:Name="StreamBox" Grid.Row="2" Grid.Column="6" Grid.ColumnSpan="2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" BorderBrush="Red" BorderThickness="1,1,1,1" Background="{x:Null}" Foreground="White"/>
-        <TextBox x:Name="MessageBox" Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="7"  HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" BorderBrush="Red" BorderThickness="1,1,1,1" Foreground="White"/>
+        <TextBox x:Name="MessageBox" Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="7"  HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" BorderBrush="Red" BorderThickness="1,1,1,1" Foreground="White" TextWrapping="Wrap"/>
     </Grid>
 </Page>
