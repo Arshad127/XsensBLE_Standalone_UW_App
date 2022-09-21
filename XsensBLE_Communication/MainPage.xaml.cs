@@ -22,6 +22,8 @@ using Windows.UI.Xaml.Navigation;
 using SDKTemplate;
 using Windows.UI.Core;
 using Windows.Devices.Bluetooth;
+using Windows.Security.Cryptography;
+using Windows.Storage.Streams;
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
 
@@ -136,9 +138,10 @@ namespace XsensBLE_Communication
             isBusy = false;
         }
 
-        private void ResetHeadingButton_Click(object sender, RoutedEventArgs e)
+        private async void ResetHeadingButton_Click(object sender, RoutedEventArgs e)
         {
             NotifyUser("[WARN] Button remapped to reading battery levels");
+            await SubscribeToBatteryServiceAsync();
         }
 
         private void SyncButton_Click(object sender, RoutedEventArgs e)
@@ -361,7 +364,7 @@ namespace XsensBLE_Communication
         #endregion
 
         #region Device Connection Methods
-        private GattCharacteristic selectedCharacteristic;
+        //private GattCharacteristic selectedCharacteristic;
         private GattCharacteristic registeredCharacteristic;
         private GattPresentationFormat presentationFormat;
         private BluetoothLEDevice bluetoothLeDevice = null;
@@ -381,7 +384,7 @@ namespace XsensBLE_Communication
                 }
                 else
                 {
-                    selectedCharacteristic.ValueChanged -= Characteristic_ValueChanged;
+                    batteryCharacteristic.ValueChanged -= Characteristic_ValueChanged;
                     subscribedForNotifications = false;
                 }
             }
@@ -426,10 +429,11 @@ namespace XsensBLE_Communication
 
                     foreach (var service in services)
                     {
+                        Debug.WriteLine($"Service -> {service.Uuid.ToString()}");
                         if (service.Uuid.Equals(Constants.BatteryServiceUuid))
                         {
                             batteryService = service;
-                            Debug.WriteLine("[ERR] The battery service was found");
+                            Debug.WriteLine("[INFO] The battery service was found");
                         }
                     }
 
@@ -440,19 +444,182 @@ namespace XsensBLE_Communication
                     NotifyUser("[ERR] Device unreachable");
                 }
             }
+        }
 
+        private async Task SubscribeToBatteryServiceAsync()
+        {
+            // Finding the characteristic ~~~~~~~~~~~~~~~~~~~~~~~~
+            RemoveValueChangedHandler();
 
+            IReadOnlyList<GattCharacteristic> characteristics = null;
+            try
+            {
+                // Ensure we have access to the device.
+                var accessStatus = await batteryService.RequestAccessAsync();
+                if (accessStatus == DeviceAccessStatus.Allowed)
+                {
+                    // BT_Code: Get all the child characteristics of a service. Use the cache mode to specify uncached characteristics only 
+                    // and the new Async functions to get the characteristics of unpaired devices as well. 
+                    var charResult = await batteryService.GetCharacteristicsAsync(BluetoothCacheMode.Uncached);
+                    if (charResult.Status == GattCommunicationStatus.Success)
+                    {
+                        characteristics = charResult.Characteristics;
+                        foreach (var characteristic in characteristics)
+                        {
+                            Debug.WriteLine($"Characteristics -> {characteristic.Uuid.ToString()}");
 
+                            if (characteristic.Uuid.Equals(Constants.BatteryCharacteristicUuid))
+                            {
+                                batteryCharacteristic = characteristic;
+                                NotifyUser("[INFO] the battery characteristics has been found");
+                            }
+                        }
+                    }
+                    else
+                    {
+                        NotifyUser("[ERR] Error accessing service.");
+
+                        // On error, act as if there are no characteristics.
+                        characteristics = new List<GattCharacteristic>();
+                    }
+                }
+                else
+                {
+                    // Not granted access
+                    NotifyUser("[ERR] Error accessing service.");
+
+                    // On error, act as if there are no characteristics.
+                    characteristics = new List<GattCharacteristic>();
+
+                }
+            }
+            catch (Exception ex)
+            {
+                NotifyUser("[ERR] Restricted service. Can't read characteristics: " + ex.Message);
+                // On error, act as if there are no characteristics.
+                characteristics = new List<GattCharacteristic>();
+            }
+
+            // Subscribe here then ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            if (!subscribedForNotifications)
+            {
+                // initialize status
+                GattCommunicationStatus status = GattCommunicationStatus.Unreachable;
+
+                try
+                {
+                    // BT_Code: Must write the CCCD in order for server to send indications.
+                    // We receive them in the ValueChanged event handler.
+                    //status = await batteryCharacteristic.WriteClientCharacteristicConfigurationDescriptorAsync(cccdValue);
+                    status = await batteryCharacteristic.WriteClientCharacteristicConfigurationDescriptorAsync(
+                        GattClientCharacteristicConfigurationDescriptorValue.Notify);
+
+                    if (status == GattCommunicationStatus.Success)
+                    {
+                        AddValueChangedHandler();
+                    }
+                    else
+                    {
+                        NotifyUser($"[ERR] Error registering for value changes: {status}");
+                    }
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    // This usually happens when a device reports that it support indicate, but it actually doesn't.
+                    NotifyUser($"[EXCEPTION] {ex.Message}");
+                }
+            }
+            else // we are already subscribed
+            {
+                try
+                {
+                    // BT_Code: Must write the CCCD in order for server to send notifications.
+                    // We receive them in the ValueChanged event handler.
+                    // Note that this sample configures either Indicate or Notify, but not both.
+                    var result = await
+                        batteryCharacteristic.WriteClientCharacteristicConfigurationDescriptorAsync(
+                                GattClientCharacteristicConfigurationDescriptorValue.None);
+                    if (result == GattCommunicationStatus.Success)
+                    {
+                        subscribedForNotifications = false;
+                        RemoveValueChangedHandler();
+                        NotifyUser("[INFO] Successfully un-registered for notifications");
+                    }
+                    else
+                    {
+                        NotifyUser($"[ERR] Error un-registering for notifications: {result}");
+                    }
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    // This usually happens when a device reports that it support notify, but it actually doesn't.
+                    NotifyUser($"[EXCEPTION] {ex.Message}");
+                }
+                
+            }
+
+            // regardless, let's read
+            // BT_Code: Read the actual value from the device by using Uncached.
+            GattReadResult result2 = await batteryCharacteristic.ReadValueAsync(BluetoothCacheMode.Uncached);
+            if (result2.Status == GattCommunicationStatus.Success)
+            {
+
+                NotifyUser(FormatValueByPresentation(result2.Value, presentationFormat));
+            }
+            else
+            {
+               NotifyUser($"[ERR] Read failed: {result2.Status}");
+            }
+        }
+
+        private void AddValueChangedHandler()
+        {
+            if (!subscribedForNotifications)
+            {
+                registeredCharacteristic = batteryCharacteristic;
+                registeredCharacteristic.ValueChanged += Characteristic_ValueChanged;
+                subscribedForNotifications = true;
+                NotifyUser("[INFO] Successfully subscribed for value changes");
+            }
+        }
+
+        private void RemoveValueChangedHandler()
+        {
+            if (subscribedForNotifications)
+            {
+                registeredCharacteristic.ValueChanged -= Characteristic_ValueChanged;
+                registeredCharacteristic = null;
+                subscribedForNotifications = false;
+                NotifyUser("[INFO] Successfully un subscribed for value changes");
+            }
         }
 
         private async void Characteristic_ValueChanged(GattCharacteristic sender, GattValueChangedEventArgs args)
         {
-            NotifyUser("[ERR] Characteristic Value was changed");
+            NotifyUser("[INFO] Characteristic Value was changed");
+
+            NotifyUser(FormatValueByPresentation(args.CharacteristicValue, presentationFormat));
+            /*
+            byte[] data;
+            CryptographicBuffer.CopyToByteArray(args.CharacteristicValue, out data);
+
+            NotifyUser($"[BATTERY] Level: {data[0].ToString()}%, State: {data[1].ToString()}");
+            */
+
             // BT_Code: An Indicate or Notify reported that the value has changed.
             // Display the new value with a timestamp.
             //var newValue = FormatValueByPresentation(args.CharacteristicValue, presentationFormat);
             //var message = $"Value at {DateTime.Now:hh:mm:ss.FFF}: {newValue}";
             //await Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () => CharacteristicLatestValue.Text = message);
+
+        }
+
+        private string FormatValueByPresentation(IBuffer buffer, GattPresentationFormat format)
+        {
+            byte[] data;
+            CryptographicBuffer.CopyToByteArray(buffer, out data);
+
+            return $"[BATTERY] Level: {data[0].ToString()}%, State: {data[1].ToString()}";
         }
 
         #endregion
