@@ -45,6 +45,8 @@ namespace XsensBLE_Communication
         private ObservableCollection<BluetoothLEDeviceDisplay> ConnectedDevices = new ObservableCollection<BluetoothLEDeviceDisplay>();
         private ConcurrentQueue<string> messageQueue = new ConcurrentQueue<string>();
         private string allMessages = "";
+        private string allStreams = "";
+        private int XsensDotDeviceCount = 0;
 
         private List<DeviceInformation> UnknownDevices = new List<DeviceInformation>();
         private DeviceWatcher deviceWatcher;
@@ -69,6 +71,25 @@ namespace XsensBLE_Communication
                 var task = Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
                 {
                     allMessages = strMessage + "\n" + allMessages;
+                    MessageBox.Text = allMessages;
+                });
+            }
+        }
+
+        public void StreamThis(string steamedData)
+        {
+            // If called from the UI thread, then update immediately.
+            // Otherwise, schedule a task on the UI thread to perform the update.
+            if (Dispatcher.HasThreadAccess)
+            {
+                allStreams = steamedData + "\n" + allStreams;
+                MessageBox.Text = allMessages;
+            }
+            else
+            {
+                var task = Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
+                {
+                    allStreams = steamedData + "\n" + allStreams;
                     MessageBox.Text = allMessages;
                 });
             }
@@ -100,6 +121,9 @@ namespace XsensBLE_Communication
 
         private bool isBusy = false;
 
+
+        public bool commsIsBusy = false;
+
         private async void ConnectButton_Click(object sender, RoutedEventArgs e)
         {
             // Do not allow a new Pair operation to start if an existing one is in progress.
@@ -125,6 +149,7 @@ namespace XsensBLE_Communication
             if (resultPair.Status == DevicePairingResultStatus.Paired || resultPair.Status == DevicePairingResultStatus.AlreadyPaired)
             {
                 NotifyUser($"[INFO] Pairing done, now connecting to device");
+
                 // here we call the connection method
                 await ConnectBLEDevice(bleDeviceDisplay.DeviceInformation);
             }
@@ -236,8 +261,6 @@ namespace XsensBLE_Communication
             {
                 lock (this)
                 {
-                    //Debug.WriteLine(String.Format("Added {0}{1}", deviceInfo.Id, deviceInfo.Name));
-
                     // Protect against race condition if the task runs after the app stopped the deviceWatcher.
                     if (sender == deviceWatcher)
                     {
@@ -386,6 +409,7 @@ namespace XsensBLE_Communication
 
         private async Task ConnectBLEDevice(DeviceInformation inDeviceInformation)
         {
+
             if (!await ClearBluetoothLEDeviceAsync())
             {
                 NotifyUser("[ERR] Unable to reset state, try again.");
@@ -436,6 +460,134 @@ namespace XsensBLE_Communication
                 }
             }
         }
+
+        private async Task SubscribeToMeasurementServiceAsync()
+        {
+            // Finding the characteristic ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            RemoveValueChangedHandler();
+
+            IReadOnlyList<GattCharacteristic> characteristics = null;
+            try
+            {
+                // Ensure we have access to the device.
+                var accessStatus = await batteryService.RequestAccessAsync();
+                if (accessStatus == DeviceAccessStatus.Allowed)
+                {
+                    // BT_Code: Get all the child characteristics of a service. Use the cache mode to specify uncached characteristics only 
+                    // and the new Async functions to get the characteristics of unpaired devices as well. 
+                    var charResult = await batteryService.GetCharacteristicsAsync(BluetoothCacheMode.Uncached);
+                    if (charResult.Status == GattCommunicationStatus.Success)
+                    {
+                        characteristics = charResult.Characteristics;
+                        foreach (var characteristic in characteristics)
+                        {
+                            Debug.WriteLine($"Characteristics -> {characteristic.Uuid.ToString()}");
+
+                            if (characteristic.Uuid.Equals(Constants.BatteryCharacteristicUuid))
+                            {
+                                batteryCharacteristic = characteristic;
+                                NotifyUser("[INFO] the battery characteristics has been found");
+                            }
+                        }
+                    }
+                    else
+                    {
+                        NotifyUser("[ERR] Error accessing service.");
+
+                        // On error, act as if there are no characteristics.
+                        characteristics = new List<GattCharacteristic>();
+                    }
+                }
+                else
+                {
+                    // Not granted access
+                    NotifyUser("[ERR] Error accessing service.");
+
+                    // On error, act as if there are no characteristics.
+                    characteristics = new List<GattCharacteristic>();
+                }
+            }
+            catch (Exception ex)
+            {
+                NotifyUser("[ERR] Restricted service. Can't read characteristics: " + ex.Message);
+
+                // On error, act as if there are no characteristics.
+                characteristics = new List<GattCharacteristic>();
+            }
+
+            // Subscribe here then ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            if (!subscribedForNotifications)
+            {
+                // initialize status
+                GattCommunicationStatus status = GattCommunicationStatus.Unreachable;
+
+                try
+                {
+                    // BT_Code: Must write the CCCD in order for server to send indications.
+                    // We receive them in the ValueChanged event handler.
+                    //status = await batteryCharacteristic.WriteClientCharacteristicConfigurationDescriptorAsync(cccdValue);
+                    status = await batteryCharacteristic.WriteClientCharacteristicConfigurationDescriptorAsync(
+                        GattClientCharacteristicConfigurationDescriptorValue.Notify);
+
+                    if (status == GattCommunicationStatus.Success)
+                    {
+                        AddValueChangedHandler();
+                    }
+                    else
+                    {
+                        NotifyUser($"[ERR] Error registering for value changes: {status}");
+                    }
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    // This usually happens when a device reports that it support indicate, but it actually doesn't.
+                    NotifyUser($"[EXCEPTION] {ex.Message}");
+                }
+            }
+            else // we are already subscribed
+            {
+                try
+                {
+                    // BT_Code: Must write the CCCD in order for server to send notifications.
+                    // We receive them in the ValueChanged event handler.
+                    // Note that this sample configures either Indicate or Notify, but not both.
+                    var result = await
+                        batteryCharacteristic.WriteClientCharacteristicConfigurationDescriptorAsync(
+                                GattClientCharacteristicConfigurationDescriptorValue.None);
+                    if (result == GattCommunicationStatus.Success)
+                    {
+                        subscribedForNotifications = false;
+                        RemoveValueChangedHandler();
+                        NotifyUser("[INFO] Successfully un-registered for notifications");
+                    }
+                    else
+                    {
+                        NotifyUser($"[ERR] Error un-registering for notifications: {result}");
+                    }
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    // This usually happens when a device reports that it support notify, but it actually doesn't.
+                    NotifyUser($"[EXCEPTION] {ex.Message}");
+                }
+
+            }
+
+            // regardless, let's read
+            // BT_Code: Read the actual value from the device by using Uncached.
+            GattReadResult result2 = await batteryCharacteristic.ReadValueAsync(BluetoothCacheMode.Uncached);
+            if (result2.Status == GattCommunicationStatus.Success)
+            {
+
+                NotifyUser(FormatValueByPresentation(result2.Value, presentationFormat));
+            }
+            else
+            {
+                NotifyUser($"[ERR] Read failed: {result2.Status}");
+            }
+
+        }
+
 
         private async Task SubscribeToBatteryServiceAsync()
         {

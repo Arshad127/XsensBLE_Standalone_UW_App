@@ -42,5 +42,8 @@ namespace XsensBLE_Communication
 
         public static readonly Guid BatteryCharacteristicUuid = Guid.Parse("15173001-4947-11e9-8646-d663bd873d93");
         public static readonly Guid BatteryServiceUuid = Guid.Parse("15173000-4947-11e9-8646-d663bd873d93");
+
+        public static readonly Guid MeasurementServiceUuid = Guid.Parse("15172000-4947-11e9-8646-d663bd873d93");
+        public static readonly Guid MeasurementCharacteristicUuid = Guid.Parse("15172003-4947-11e9-8646-d663bd873d93");
     };
 }
