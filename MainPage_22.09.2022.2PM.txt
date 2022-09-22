@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -44,8 +44,6 @@ namespace XsensBLE_Communication
         private ObservableCollection<BluetoothLEDeviceDisplay> KnownDevices = new ObservableCollection<BluetoothLEDeviceDisplay>();
         private ObservableCollection<BluetoothLEDeviceDisplay> ConnectedDevices = new ObservableCollection<BluetoothLEDeviceDisplay>();
         private ConcurrentQueue<string> messageQueue = new ConcurrentQueue<string>();
-        private List<XsensDotDevice> xSensDotDevicesList = new List<XsensDotDevice>();
-
         private string allMessages = "";
         private string allStreams = "";
         private int XsensDotDeviceCount = 0;
@@ -124,53 +122,16 @@ namespace XsensBLE_Communication
         private bool isBusy = false;
 
 
-        private async void ConsiderButton_Click(object sender, RoutedEventArgs e)
-        {
-            // Get the device from the list view
-            var tempBleDeviceDisplay = DeviceListBox.SelectedItem as BluetoothLEDeviceDisplay;
-
-            if (tempBleDeviceDisplay == null)
-            {
-                return;
-            }
-
-            XsensDotDevice newDevice = new XsensDotDevice(tempBleDeviceDisplay.DeviceInformation, this);
-
-            if (!xSensDotDevicesList.Contains(newDevice))
-            {
-                xSensDotDevicesList.Add(newDevice);
-                NotifyUser($"The device {newDevice.UniqueDeviceName} has been queued up");
-            }
-            else
-            {
-                xSensDotDevicesList.Remove(newDevice);
-                NotifyUser($"The device {newDevice.UniqueDeviceName} has been removed");
-            }
-
-
-
-            // Add to the list of connected devices
-
-            // Pull the devices on the list
-
-            // Attempt connection
-        }
+        public bool commsIsBusy = false;
 
         private async void ConnectButton_Click(object sender, RoutedEventArgs e)
         {
-            foreach (var device in xSensDotDevicesList)
-            {
-                device.SubscribeToBattery();
-            }
-
-            
             // Do not allow a new Pair operation to start if an existing one is in progress.
             if (isBusy)
             {
                 return;
             }
-            
-            /*
+
             isBusy = true;
 
             NotifyUser("[INFO] Pairing started. Please wait...");
@@ -195,7 +156,6 @@ namespace XsensBLE_Communication
             
             NotifyUser($"[INFO] Connection Established");
             isBusy = false;
-            */
         }
 
         private async void ResetHeadingButton_Click(object sender, RoutedEventArgs e)
@@ -211,10 +171,7 @@ namespace XsensBLE_Communication
 
         private void StreamingButton_Click(object sender, RoutedEventArgs e)
         {
-            foreach (var device in xSensDotDevicesList)
-            {
-                device.SubscribeToMeasurement();
-            }
+
         }
         #endregion
 
@@ -791,7 +748,7 @@ namespace XsensBLE_Communication
             byte[] data;
             CryptographicBuffer.CopyToByteArray(args.CharacteristicValue, out data);
 
-            NotifyUser($"[Battery] Level: {data[0].ToString()}%, State: {data[1].ToString()}");
+            NotifyUser($"[BATTERY] Level: {data[0].ToString()}%, State: {data[1].ToString()}");
             */
 
             // BT_Code: An Indicate or Notify reported that the value has changed.
@@ -807,7 +764,7 @@ namespace XsensBLE_Communication
             byte[] data;
             CryptographicBuffer.CopyToByteArray(buffer, out data);
 
-            return $"[Battery] Level: {data[0].ToString()}%, State: {data[1].ToString()}";
+            return $"[BATTERY] Level: {data[0].ToString()}%, State: {data[1].ToString()}";
         }
         
 

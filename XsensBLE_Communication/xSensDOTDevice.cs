@@ -12,7 +12,7 @@ using Windows.Storage.Streams;
 
 namespace XsensBLE_Communication
 {
-    public class XsensDotDevice
+    public class XsensDotDevice : IEquatable<XsensDotDevice>
     {
         #region Error Codes
         readonly int E_BLUETOOTH_ATT_WRITE_NOT_PERMITTED = unchecked((int)0x80650003);
@@ -26,6 +26,7 @@ namespace XsensBLE_Communication
         private static readonly Guid BatteryServiceUuid = Guid.Parse("15173000-4947-11e9-8646-d663bd873d93");
         private static readonly Guid MeasurementServiceUuid = Guid.Parse("15172000-4947-11e9-8646-d663bd873d93");
         private static readonly Guid MeasurementCharacteristicUuid = Guid.Parse("15172003-4947-11e9-8646-d663bd873d93");
+        private static readonly Guid ControlCharacteristicUuid = Guid.Parse("15172001-4947-11e9-8646-d663bd873d93");
         public static readonly string targetDeviceName = "Xsens DOT";
 
         private bool isBatterySubscribed = false;
@@ -36,6 +37,7 @@ namespace XsensBLE_Communication
         private GattDeviceService measurementService = null;
         private GattCharacteristic measurementCharacteristic = null;
         private GattCharacteristic registeredMeasurementCharacteristic = null;
+        private GattCharacteristic controlCharacteristic = null;
         private GattPresentationFormat presentationFormat;
         private BluetoothLEDevice bluetoothLeDevice = null;
 
@@ -72,6 +74,11 @@ namespace XsensBLE_Communication
         public bool IsPaired => DeviceInformation.Pairing.IsPaired;
         public bool IsConnected => (bool?)DeviceInformation.Properties["System.Devices.Aep.IsConnected"] == true;
         public bool IsConnectable => (bool?)DeviceInformation.Properties["System.Devices.Aep.Bluetooth.Le.IsConnectable"] == true;
+
+        public string ToString()
+        {
+            return UniqueDeviceName;
+        }
 
         public async Task PairToDevice()
         {
@@ -212,19 +219,107 @@ namespace XsensBLE_Communication
             }
         }
 
-        public async Task SubscribeToBattery() // to subscribe and unsubscribe to the battery service
+        public async Task SubscribeToMeasurement() // to subscribe and unsubscribe to the measurement service
         {
-            if (!IsPaired)
+            if (!IsPaired) // ensure device is paired to
             {
                 await PairToDevice();
             }
 
-            if (!IsConnected)
+            if (!IsConnected) // ensure device is connected to 
             {
                 await Connect();
             }
 
-            if (batteryCharacteristic == null)
+            if (measurementCharacteristic == null) // hunt for that battery service
+            {
+                await GetServices(); // gets all the services on the device
+                measurementCharacteristic = await GetSpecificCharacteristic(MeasurementServiceUuid, MeasurementCharacteristicUuid);
+            }
+
+            // Doing the Subscribing
+            RemoveValueChangedHandlerMeasurement(); // remove any prior handler of the battery
+
+            if (!isMeasurementSubscribed)
+            {
+                // Initialise the status
+                GattCommunicationStatus status = GattCommunicationStatus.Unreachable;
+
+                try
+                {
+                    // BT_Code: Must write the CCCD in order for server to send indications.
+                    // We receive them in the ValueChanged event handler.
+                    //status = await batteryCharacteristic.WriteClientCharacteristicConfigurationDescriptorAsync(cccdValue);
+                    status = await measurementCharacteristic.WriteClientCharacteristicConfigurationDescriptorAsync(
+                        GattClientCharacteristicConfigurationDescriptorValue.Notify);
+
+                    if (status == GattCommunicationStatus.Success)
+                    {
+                        AddValueChangedHandlerMeasurement();
+                    }
+                    else
+                    {
+                        rootPage.NotifyUser($"[err] Error registering for measurement changes: {status} for {UniqueDeviceName}.");
+                    }
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    // This usually happens when a device reports that it support indicate, but it actually doesn't.
+                    rootPage.NotifyUser($"[excpt] for {UniqueDeviceName} -> {ex.Message}");
+                }
+            }
+            else // here we are unsubscribing
+            {
+                try
+                {
+                    // BT_Code: Must write the CCCD in order for server to send notifications.
+                    // We receive them in the ValueChanged event handler.
+                    // Note that this sample configures either Indicate or Notify, but not both.
+                    var result = await
+                        measurementCharacteristic.WriteClientCharacteristicConfigurationDescriptorAsync(
+                            GattClientCharacteristicConfigurationDescriptorValue.None);
+                    if (result == GattCommunicationStatus.Success)
+                    {
+                        isMeasurementSubscribed = false;
+                        RemoveValueChangedHandlerMeasurement();
+                        rootPage.NotifyUser($"[info] Successfully un-registered for notifications for {UniqueDeviceName}.");
+                    }
+                    else
+                    {
+                        rootPage.NotifyUser($"[err] Error un-registering for notifications: {result} for {UniqueDeviceName}.");
+                    }
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    // This usually happens when a device reports that it support notify, but it actually doesn't.
+                    rootPage.NotifyUser($"[excpt] for {UniqueDeviceName} -> {ex.Message}");
+                }
+            }
+
+            // Set payload and start streaming
+            controlCharacteristic = await GetSpecificCharacteristic(MeasurementServiceUuid, ControlCharacteristicUuid);
+
+            // Read the existing data byte array
+            GattReadResult xSensControlData = await controlCharacteristic.ReadValueAsync(BluetoothCacheMode.Uncached);
+
+            // Lets see what we get hey
+            rootPage.NotifyUser(FormatValueByPresentation(xSensControlData.Value, CustomPresentationFormat.MeasurementDetails));
+
+        }
+
+        public async Task SubscribeToBattery() // to subscribe and unsubscribe to the battery service
+        {
+            if (!IsPaired) // ensure device is paired to
+            {
+                await PairToDevice();
+            }
+
+            if (!IsConnected) // ensure device is connected to 
+            {
+                await Connect();
+            }
+
+            if (batteryCharacteristic == null) // hunt for that battery service
             {
                 await GetServices(); // gets all the services on the device
                 batteryCharacteristic = await GetSpecificCharacteristic(BatteryServiceUuid, BatteryCharacteristicUuid);
@@ -296,16 +391,12 @@ namespace XsensBLE_Communication
             if (gattReadTempResult1.Status == GattCommunicationStatus.Success)
             {
 
-                rootPage.NotifyUser(FormatValueByPresentation(gattReadTempResult1.Value, presentationFormat));
+                rootPage.NotifyUser(FormatValueByPresentation(gattReadTempResult1.Value, CustomPresentationFormat.Battery));
             }
             else
             {
                 rootPage.NotifyUser($"[err] Read failed in {UniqueDeviceName}: {gattReadTempResult1.Status}");
             }
-
-
-
-
         }
 
 
@@ -319,7 +410,7 @@ namespace XsensBLE_Communication
             registeredBatteryCharacteristic = batteryCharacteristic;
             registeredBatteryCharacteristic.ValueChanged += Characteristic_BatteryValueChanged;
             isBatterySubscribed = true;
-            rootPage.NotifyUser($"[info] {UniqueDeviceName} Successfully subscribed for value changes");
+            rootPage.NotifyUser($"[info] {UniqueDeviceName} Successfully subscribed for battery changes");
         }
 
         private void RemoveValueChangedHandlerBattery()
@@ -329,35 +420,77 @@ namespace XsensBLE_Communication
             registeredBatteryCharacteristic.ValueChanged -= Characteristic_BatteryValueChanged;
             registeredBatteryCharacteristic = null;
             isBatterySubscribed = false;
-            rootPage.NotifyUser($"[info] {UniqueDeviceName} Successfully un subscribed for value changes");
+            rootPage.NotifyUser($"[info] {UniqueDeviceName} Successfully un subscribed for battery changes");
         }
 
-        private async void Characteristic_BatteryValueChanged(GattCharacteristic sender, GattValueChangedEventArgs args)
+        private void Characteristic_BatteryValueChanged(GattCharacteristic sender, GattValueChangedEventArgs args)
         {
-            rootPage.NotifyUser($"[info] {UniqueDeviceName} Characteristic Value was changed");
-
-            rootPage.NotifyUser(FormatValueByPresentation(args.CharacteristicValue, presentationFormat));
-            /*
-            byte[] data;
-            CryptographicBuffer.CopyToByteArray(args.CharacteristicValue, out data);
-
-            NotifyUser($"[BATTERY] Level: {data[0].ToString()}%, State: {data[1].ToString()}");
-            */
-
-            // BT_Code: An Indicate or Notify reported that the value has changed.
-            // Display the new value with a timestamp.
-            //var newValue = FormatValueByPresentation(args.CharacteristicValue, presentationFormat);
-            //var message = $"Value at {DateTime.Now:hh:mm:ss.FFF}: {newValue}";
-            //await Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () => CharacteristicLatestValue.Text = message);
-
+            rootPage.NotifyUser(FormatValueByPresentation(args.CharacteristicValue, CustomPresentationFormat.Battery));
         }
 
-        private string FormatValueByPresentation(IBuffer buffer, GattPresentationFormat format)
+        private void AddValueChangedHandlerMeasurement()
+        {
+            if (isBatterySubscribed) return; // Guard
+
+            registeredMeasurementCharacteristic = measurementCharacteristic;
+            registeredMeasurementCharacteristic.ValueChanged += Characteristic_MeasurementValueChanged;
+            isMeasurementSubscribed = true;
+            rootPage.NotifyUser($"[info] {UniqueDeviceName} Successfully subscribed for measurement value changes");
+        }
+
+        private void RemoveValueChangedHandlerMeasurement()
+        {
+            if (!isBatterySubscribed) return; // Guard
+
+            registeredMeasurementCharacteristic.ValueChanged -= Characteristic_MeasurementValueChanged;
+            registeredMeasurementCharacteristic = null;
+            isMeasurementSubscribed = false;
+            rootPage.NotifyUser($"[info] {UniqueDeviceName} Successfully un subscribed for measurement changes");
+        }
+
+        private void Characteristic_MeasurementValueChanged(GattCharacteristic sender, GattValueChangedEventArgs args)
+        {
+            rootPage.NotifyUser(FormatValueByPresentation(args.CharacteristicValue, CustomPresentationFormat.MeasurementEuler));
+        }
+
+        private string FormatValueByPresentation(IBuffer buffer, CustomPresentationFormat format)
         {
             byte[] data;
             CryptographicBuffer.CopyToByteArray(buffer, out data);
+            string outString = "";
 
-            return $"[BATTERY] [{UniqueDeviceName}]: {data[0].ToString()}%, State: {data[1].ToString()}";
+            switch (format)
+            {
+                case CustomPresentationFormat.Battery:
+                    outString = $"[Battery] [{UniqueDeviceName}]: {data[0].ToString()}%, State: {data[1].ToString()}";
+                    break;
+
+                case CustomPresentationFormat.MeasurementEuler:
+                    outString = $"[EulerMeasurement] [{UniqueDeviceName}]: Not setup to present data yet";
+                    break;
+
+                case CustomPresentationFormat.MeasurementQuaternion:
+                    outString = $"[QuaternionMeasurement] [{UniqueDeviceName}]: Not setup to present data yet";
+                    break;
+                case CustomPresentationFormat.MeasurementDetails:
+                    outString = $"[MeasurementDetails] [{UniqueDeviceName}]: Type:{data[0]}, Action:{data[1]}, Payload:{data[2]}";
+                    break;
+            }
+
+            return outString;
+        }
+
+        public bool Equals(XsensDotDevice other)
+        {
+            return other != null && other.Id.Equals(this.Id);
+        }
+
+        public enum CustomPresentationFormat
+        {
+            Battery,
+            MeasurementQuaternion,
+            MeasurementEuler,
+            MeasurementDetails
         }
 
 
