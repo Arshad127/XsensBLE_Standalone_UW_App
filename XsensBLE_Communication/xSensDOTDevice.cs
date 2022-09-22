@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices.WindowsRuntime;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Windows.Devices.Bluetooth;
 using Windows.Devices.Bluetooth.GenericAttributeProfile;
@@ -25,7 +27,9 @@ namespace XsensBLE_Communication
         private static readonly Guid BatteryCharacteristicUuid = Guid.Parse("15173001-4947-11e9-8646-d663bd873d93");
         private static readonly Guid BatteryServiceUuid = Guid.Parse("15173000-4947-11e9-8646-d663bd873d93");
         private static readonly Guid MeasurementServiceUuid = Guid.Parse("15172000-4947-11e9-8646-d663bd873d93");
-        private static readonly Guid MeasurementCharacteristicUuid = Guid.Parse("15172003-4947-11e9-8646-d663bd873d93");
+        private static readonly Guid ShortPayloadCharacteristicUuid = Guid.Parse("15172004-4947-11e9-8646-d663bd873d93");
+        private static readonly Guid MediumPayloadCharacteristicUuid = Guid.Parse("15172003-4947-11e9-8646-d663bd873d93");
+        private static readonly Guid LongPayloadCharacteristicUuid = Guid.Parse("15172002-4947-11e9-8646-d663bd873d93");
         private static readonly Guid ControlCharacteristicUuid = Guid.Parse("15172001-4947-11e9-8646-d663bd873d93");
         public static readonly string targetDeviceName = "Xsens DOT";
 
@@ -34,16 +38,18 @@ namespace XsensBLE_Communication
         private GattDeviceService batteryService = null;
         private GattCharacteristic batteryCharacteristic = null;
         private GattCharacteristic registeredBatteryCharacteristic = null;
-        private GattDeviceService measurementService = null;
-        private GattCharacteristic measurementCharacteristic = null;
+        private GattCharacteristic mediumPayLoadCharacteristic = null;
         private GattCharacteristic registeredMeasurementCharacteristic = null;
         private GattCharacteristic controlCharacteristic = null;
-        private GattPresentationFormat presentationFormat;
+
+        private Thread streamingThread = null;
+        private bool isStreaming = false;
+        private PayloadType payloadType = PayloadType.CompleteEuler;
+
         private BluetoothLEDevice bluetoothLeDevice = null;
 
         private IReadOnlyList<GattDeviceService> services;
-        private IReadOnlyList<GattCharacteristic> batteryCharacteristics;
-        private IReadOnlyList<GattCharacteristic> measurementCharacteristics;
+
 
 
 
@@ -75,7 +81,7 @@ namespace XsensBLE_Communication
         public bool IsConnected => (bool?)DeviceInformation.Properties["System.Devices.Aep.IsConnected"] == true;
         public bool IsConnectable => (bool?)DeviceInformation.Properties["System.Devices.Aep.Bluetooth.Le.IsConnectable"] == true;
 
-        public string ToString()
+        public override string ToString()
         {
             return UniqueDeviceName;
         }
@@ -91,7 +97,7 @@ namespace XsensBLE_Communication
         {
             if (!IsPaired)
             {
-                rootPage.NotifyUser($"[err] Cannot Connect without being paired to {UniqueDeviceName} first.");
+                rootPage.NotifyUser($"[err] Cannot connect without being paired to {UniqueDeviceName} first.");
                 return;
             }
 
@@ -138,6 +144,14 @@ namespace XsensBLE_Communication
         {
             GattDeviceService targettedService = null;
             GattCharacteristic targettedCharacteristic = null;
+
+            // Confirmation that we have the services listed and happy. Else the following
+            // FOR loop will raise an exception and we wouldn't want that now would we?
+            while (services == null)
+            {
+                await GetServices();
+                Thread.Sleep(100);
+            }
 
             foreach (var service in services)
             {
@@ -202,25 +216,35 @@ namespace XsensBLE_Communication
         }
 
 
-        private void GetBatteryService()
+        #region Run the stream in another thread
+        public void StreamSplitThread()
         {
-            foreach (var service in services)
-            {
-                if (service.Uuid.Equals(BatteryServiceUuid))
-                {
-                    batteryService = service;
-                    rootPage.NotifyUser($"[info] Battery service of {UniqueDeviceName} found.");
-                }
-            }
+            if (isStreaming) return;
 
-            if (batteryService == null)
+            streamingThread = new Thread(() => SubscribeToMeasurement(PayloadType.CompleteEuler));
+            streamingThread.Start();
+            isStreaming = true;
+            rootPage.NotifyUser($"[info] [{UniqueDeviceName}] NEW THREAD STARTED AND STREAMING");
+        }
+
+        public void StopStreaming()
+        {
+            if (!isStreaming) return;
+
+            if (streamingThread != null)
             {
-                rootPage.NotifyUser($"[err] Battery service of {UniqueDeviceName} not found.");
+                streamingThread.Abort();
+                isStreaming = false;
             }
         }
 
-        public async Task SubscribeToMeasurement() // to subscribe and unsubscribe to the measurement service
+        #endregion
+
+
+        public async Task SubscribeToMeasurement(PayloadType payload) // to subscribe and unsubscribe to the measurement service
         {
+            this.payloadType = payload; // now set as the global variable
+
             if (!IsPaired) // ensure device is paired to
             {
                 await PairToDevice();
@@ -231,10 +255,16 @@ namespace XsensBLE_Communication
                 await Connect();
             }
 
-            if (measurementCharacteristic == null) // hunt for that battery service
+            if (mediumPayLoadCharacteristic == null) // hunt for that payload characteristic required to scream data back to us
             {
                 await GetServices(); // gets all the services on the device
-                measurementCharacteristic = await GetSpecificCharacteristic(MeasurementServiceUuid, MeasurementCharacteristicUuid);
+                mediumPayLoadCharacteristic = await GetSpecificCharacteristic(MeasurementServiceUuid, MediumPayloadCharacteristicUuid);
+            }
+
+            if (controlCharacteristic == null) // get the control characteristics
+            {
+                await GetServices(); // gets all the services on the device
+                controlCharacteristic = await GetSpecificCharacteristic(MeasurementServiceUuid, ControlCharacteristicUuid);
             }
 
             // Doing the Subscribing
@@ -250,12 +280,13 @@ namespace XsensBLE_Communication
                     // BT_Code: Must write the CCCD in order for server to send indications.
                     // We receive them in the ValueChanged event handler.
                     //status = await batteryCharacteristic.WriteClientCharacteristicConfigurationDescriptorAsync(cccdValue);
-                    status = await measurementCharacteristic.WriteClientCharacteristicConfigurationDescriptorAsync(
+                    status = await mediumPayLoadCharacteristic.WriteClientCharacteristicConfigurationDescriptorAsync(
                         GattClientCharacteristicConfigurationDescriptorValue.Notify);
 
                     if (status == GattCommunicationStatus.Success)
                     {
-                        AddValueChangedHandlerMeasurement();
+                        AddValueChangedHandlerMeasurement(); // will set isMeasurementSubscribed flag to true as well
+                        rootPage.NotifyUser($"[info] Measurement Notification for {UniqueDeviceName} is on.");
                     }
                     else
                     {
@@ -276,7 +307,7 @@ namespace XsensBLE_Communication
                     // We receive them in the ValueChanged event handler.
                     // Note that this sample configures either Indicate or Notify, but not both.
                     var result = await
-                        measurementCharacteristic.WriteClientCharacteristicConfigurationDescriptorAsync(
+                        mediumPayLoadCharacteristic.WriteClientCharacteristicConfigurationDescriptorAsync(
                             GattClientCharacteristicConfigurationDescriptorValue.None);
                     if (result == GattCommunicationStatus.Success)
                     {
@@ -297,13 +328,23 @@ namespace XsensBLE_Communication
             }
 
             // Set payload and start streaming
-            controlCharacteristic = await GetSpecificCharacteristic(MeasurementServiceUuid, ControlCharacteristicUuid);
-
             // Read the existing data byte array
             GattReadResult xSensControlData = await controlCharacteristic.ReadValueAsync(BluetoothCacheMode.Uncached);
 
-            // Lets see what we get hey
-            rootPage.NotifyUser(FormatValueByPresentation(xSensControlData.Value, CustomPresentationFormat.MeasurementDetails));
+            // Lets see what we get eh
+            rootPage.NotifyUser("[BEFORE]" + FormatValueByPresentation(xSensControlData.Value, PayloadType.MeasurementGeneralDetails));
+
+            // Get the byte array and edit
+            byte[] controlDataArray = GetByteArray(xSensControlData.Value);
+            controlDataArray[1] = 1; // Start the measurement
+            controlDataArray[2] = (byte)(int)payloadType; // as per requested when calling the parent method
+
+            // Write the information to the device
+            await controlCharacteristic.WriteValueAsync(controlDataArray.AsBuffer());
+
+            // Read again and see
+            xSensControlData = await controlCharacteristic.ReadValueAsync(BluetoothCacheMode.Uncached);
+            rootPage.NotifyUser("[AFTER]" + FormatValueByPresentation(xSensControlData.Value, PayloadType.MeasurementGeneralDetails));
 
         }
 
@@ -390,8 +431,7 @@ namespace XsensBLE_Communication
             GattReadResult gattReadTempResult1 = await batteryCharacteristic.ReadValueAsync(BluetoothCacheMode.Uncached);
             if (gattReadTempResult1.Status == GattCommunicationStatus.Success)
             {
-
-                rootPage.NotifyUser(FormatValueByPresentation(gattReadTempResult1.Value, CustomPresentationFormat.Battery));
+                rootPage.NotifyUser(FormatValueByPresentation(gattReadTempResult1.Value, PayloadType.BatteryDetails));
             }
             else
             {
@@ -425,14 +465,14 @@ namespace XsensBLE_Communication
 
         private void Characteristic_BatteryValueChanged(GattCharacteristic sender, GattValueChangedEventArgs args)
         {
-            rootPage.NotifyUser(FormatValueByPresentation(args.CharacteristicValue, CustomPresentationFormat.Battery));
+            rootPage.NotifyUser(FormatValueByPresentation(args.CharacteristicValue, PayloadType.BatteryDetails));
         }
 
         private void AddValueChangedHandlerMeasurement()
         {
-            if (isBatterySubscribed) return; // Guard
+            if (isMeasurementSubscribed) return; // Guard
 
-            registeredMeasurementCharacteristic = measurementCharacteristic;
+            registeredMeasurementCharacteristic = mediumPayLoadCharacteristic;
             registeredMeasurementCharacteristic.ValueChanged += Characteristic_MeasurementValueChanged;
             isMeasurementSubscribed = true;
             rootPage.NotifyUser($"[info] {UniqueDeviceName} Successfully subscribed for measurement value changes");
@@ -440,44 +480,98 @@ namespace XsensBLE_Communication
 
         private void RemoveValueChangedHandlerMeasurement()
         {
-            if (!isBatterySubscribed) return; // Guard
+            if (!isMeasurementSubscribed) return; // Guard
 
             registeredMeasurementCharacteristic.ValueChanged -= Characteristic_MeasurementValueChanged;
             registeredMeasurementCharacteristic = null;
             isMeasurementSubscribed = false;
-            rootPage.NotifyUser($"[info] {UniqueDeviceName} Successfully un subscribed for measurement changes");
+            rootPage.NotifyUser($"[info] {UniqueDeviceName} Successfully un-subscribed for measurement changes");
         }
 
         private void Characteristic_MeasurementValueChanged(GattCharacteristic sender, GattValueChangedEventArgs args)
         {
-            rootPage.NotifyUser(FormatValueByPresentation(args.CharacteristicValue, CustomPresentationFormat.MeasurementEuler));
+            rootPage.StreamData(FormatValueByPresentation(args.CharacteristicValue, this.payloadType));
         }
 
-        private string FormatValueByPresentation(IBuffer buffer, CustomPresentationFormat format)
+
+        // Quick Access Variable
+        private byte[] rawData, timeStampSubArr, eulerSubArrX, eulerSubArrY, eulerSubArrZ, freeAccSubArrX, freeAccSubArrY, freeAccSubArrZ;
+        private byte[] quatSubArrW, quatSubArrX, quatSubArrY, quatSubArrZ;
+
+        private string timeStamp, eulerX, eulerY, eulerZ, freeAccX, freeAccY, freeAccZ;
+        private string quatW, quatX, quatY, quatZ;
+
+        private string FormatValueByPresentation(IBuffer buffer, PayloadType payloadType)
         {
-            byte[] data;
-            CryptographicBuffer.CopyToByteArray(buffer, out data);
+            CryptographicBuffer.CopyToByteArray(buffer, out rawData);
             string outString = "";
 
-            switch (format)
+            switch (payloadType)
             {
-                case CustomPresentationFormat.Battery:
-                    outString = $"[Battery] [{UniqueDeviceName}]: {data[0].ToString()}%, State: {data[1].ToString()}";
+                case PayloadType.BatteryDetails:
+                    outString = $"[Battery] [{UniqueDeviceName}]: {rawData[0].ToString()}%, State: {rawData[1].ToString()}";
                     break;
 
-                case CustomPresentationFormat.MeasurementEuler:
-                    outString = $"[EulerMeasurement] [{UniqueDeviceName}]: Not setup to present data yet";
+                case PayloadType.CompleteEuler:
+                    if (rawData.Length >= 28)
+                    {
+                        timeStampSubArr = getSubArray(rawData, 0, 4);
+                        eulerSubArrX = getSubArray(rawData, 4, 4);
+                        eulerSubArrY = getSubArray(rawData, 8, 4);
+                        eulerSubArrZ = getSubArray(rawData, 12, 4);
+                        freeAccSubArrX = getSubArray(rawData, 16, 4);
+                        freeAccSubArrY = getSubArray(rawData, 20, 4);
+                        freeAccSubArrZ = getSubArray(rawData, 24, 4);
+
+                        timeStamp = BitConverter.ToUInt32(timeStampSubArr, 0).ToString();
+                        eulerX = BitConverter.ToSingle(eulerSubArrX, 0).ToString();
+                        eulerY = BitConverter.ToSingle(eulerSubArrY, 0).ToString();
+                        eulerZ = BitConverter.ToSingle(eulerSubArrZ, 0).ToString();
+                        freeAccX = BitConverter.ToSingle(freeAccSubArrX, 0).ToString();
+                        freeAccY = BitConverter.ToSingle(freeAccSubArrY, 0).ToString();
+                        freeAccZ = BitConverter.ToSingle(freeAccSubArrZ, 0).ToString();
+
+                        outString = $"[{UniqueDeviceName}] Time: {timeStamp}, X: {eulerX}, Y: {eulerY}, Z: {eulerZ}, AccX: {freeAccX}, AccY: {freeAccY}, AccZ: {freeAccZ}";
+                    }
                     break;
 
-                case CustomPresentationFormat.MeasurementQuaternion:
-                    outString = $"[QuaternionMeasurement] [{UniqueDeviceName}]: Not setup to present data yet";
+                case PayloadType.CompleteQuaternion:
+                    if (rawData.Length >= 32)
+                    {
+                        timeStampSubArr = getSubArray(rawData, 0, 4);
+                        quatSubArrW = getSubArray(rawData, 4, 4);
+                        quatSubArrX = getSubArray(rawData, 8, 4);
+                        quatSubArrY = getSubArray(rawData, 12, 4);
+                        quatSubArrZ = getSubArray(rawData, 16, 4);
+                        freeAccSubArrX = getSubArray(rawData, 20, 4);
+                        freeAccSubArrY = getSubArray(rawData, 24, 4);
+                        freeAccSubArrZ = getSubArray(rawData, 28, 4);
+
+                        timeStamp = BitConverter.ToUInt32(timeStampSubArr, 0).ToString();
+                        quatW = BitConverter.ToSingle(quatSubArrW, 0).ToString();
+                        quatX = BitConverter.ToSingle(quatSubArrX, 0).ToString();
+                        quatY = BitConverter.ToSingle(quatSubArrY, 0).ToString();
+                        quatZ = BitConverter.ToSingle(quatSubArrZ, 0).ToString();
+                        freeAccX = BitConverter.ToSingle(freeAccSubArrX, 0).ToString();
+                        freeAccY = BitConverter.ToSingle(freeAccSubArrY, 0).ToString();
+                        freeAccZ = BitConverter.ToSingle(freeAccSubArrZ, 0).ToString();
+
+                        outString = $"[{UniqueDeviceName}] Time: {timeStamp}, W: {quatW} X: {quatX}, Y: {quatY}, Z: {quatZ}, AccX: {freeAccX}, AccY: {freeAccY}, AccZ: {freeAccZ}";
+                    }
                     break;
-                case CustomPresentationFormat.MeasurementDetails:
-                    outString = $"[MeasurementDetails] [{UniqueDeviceName}]: Type:{data[0]}, Action:{data[1]}, Payload:{data[2]}";
+                case PayloadType.MeasurementGeneralDetails:
+                    outString = $"[MeasurementDetails] [{UniqueDeviceName}]: Type:{rawData[0]}, Action:{rawData[1]}, Payload:{rawData[2]}";
                     break;
             }
 
             return outString;
+        }
+
+        private byte[] GetByteArray(IBuffer buffer)
+        {
+            byte[] data;
+            CryptographicBuffer.CopyToByteArray(buffer, out data);
+            return data;
         }
 
         public bool Equals(XsensDotDevice other)
@@ -491,6 +585,16 @@ namespace XsensBLE_Communication
             MeasurementQuaternion,
             MeasurementEuler,
             MeasurementDetails
+        }
+
+
+        private static T[] getSubArray<T>(T[] array, int startIdx, int length)
+        {
+            T[] subArray = new T[length];
+
+            Array.Copy(array, startIdx, subArray, 0, length);
+
+            return subArray;
         }
 
 

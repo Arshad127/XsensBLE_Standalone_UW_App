@@ -33,34 +33,40 @@
 
     </Page.Resources>
     <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="20"/>
+            <ColumnDefinition Width="200"/>
+            <ColumnDefinition Width="550"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="20"/>
+        </Grid.ColumnDefinitions>
+
         <Grid.RowDefinitions>
             <RowDefinition Height="20"/>
-            <RowDefinition Height="40"/>
+            <RowDefinition Height="50"/>
+            <RowDefinition Height="50"/>
+            <RowDefinition Height="50"/>
+            <RowDefinition Height="50"/>
+            <RowDefinition Height="50"/>
+            <RowDefinition Height="50"/>
+            <RowDefinition Height="50"/>
+            <RowDefinition Height="50"/>
+            <RowDefinition Height="50"/>
+            <RowDefinition Height="50"/>
             <RowDefinition Height="*"/>
-            <RowDefinition Height="350"/>
             <RowDefinition Height="20"/>
         </Grid.RowDefinitions>
 
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="20"/>
-            <ColumnDefinition Width="120"/>
-            <ColumnDefinition Width="120"/>
-            <ColumnDefinition Width="120"/>
-            <ColumnDefinition Width="120"/>
-            <ColumnDefinition Width="120"/>
-            <ColumnDefinition Width="120"/>
-            <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="20"/>
-
-        </Grid.ColumnDefinitions>
-
-        <Button x:Name="DiscoveringButton" Grid.Row="1" Grid.Column="1" Content="Discover" Click="DiscoveringButton_Click" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" Background="White" Foreground="Black" />
-        <Button x:Name="ConnectButton" Grid.Column="2" Grid.Row="1" Content="Connect" Click="ConnectButton_Click"  HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" Background="White" Foreground="Black"/>
-        <Button x:Name="ResetHeadingButton" Grid.Column="3" Grid.Row="1" Content="Reset Heading" Click="ResetHeadingButton_Click"  HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" Background="White" Foreground="Black"/>
-        <Button x:Name="ConsiderButton" Grid.Column="4" Grid.Row="1" Content="Consider" Click="ConsiderButton_Click"  HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" Background="White" Foreground="Black"/>
-        <Button x:Name="StreamingButton" Grid.Column="5" Grid.Row="1" Content="Start Stream" Click="StreamingButton_Click"  HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" Background="White" Foreground="Black"/>
-        <ListView x:Name="DeviceListBox" Grid.Row ="2" Grid.Column="1" Grid.ColumnSpan="5" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" BorderBrush="Red" BorderThickness="1,1,1,1" Foreground="White" ItemTemplate="{StaticResource ResultsListViewTemplate}" ItemsSource="{x:Bind KnownDevices, Mode=OneWay}"/>
-        <TextBox x:Name="StreamBox" Grid.Row="2" Grid.Column="6" Grid.ColumnSpan="2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" BorderBrush="Red" BorderThickness="1,1,1,1" Background="{x:Null}" Foreground="White"/>
-        <TextBox x:Name="MessageBox" Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="7"  HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" BorderBrush="Red" BorderThickness="1,1,1,1" Foreground="White" TextWrapping="Wrap"/>
+        <Button x:Name="DiscoveringButton" Grid.Row="1" Grid.Column="1" Content="Discover DOTs" Click="DiscoveringButton_Click" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" Background="White" Foreground="Black" />
+        <Button x:Name="BatterySubscribeButton" Grid.Column="1" Grid.Row="3" Content="Check Battery" Click="Subscribe2BatteryButton_Click"  HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" Background="White" Foreground="Black"/>
+        <Button x:Name="ResetHeadingButton" Grid.Column="1" Grid.Row="4" Content="Reset Heading" Click="ResetHeadingButton_Click"  HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" Background="White" Foreground="Black"/>
+        <Button x:Name="SynchroniseButton" Grid.Column="1" Grid.Row="5" Content="Synchronise" Click="SynchroniseButton_Click"  HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" Background="White" Foreground="Black"/>
+        <Button x:Name="QueueDeviceButton" Grid.Column="1" Grid.Row="2" Content="Queue" Click="QueueDeviceButton_Click"  HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" Background="White" Foreground="Black"/>
+        <Button x:Name="StreamingButton" Grid.Column="1" Grid.Row="6" Content="Start Stream" Click="Subscribe2MeasurementButton_Click"  HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" Background="White" Foreground="Black"/>
+        <ListView x:Name="DeviceListBox" Grid.Row ="1" Grid.Column="2" Grid.RowSpan="10" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" BorderBrush="Red" BorderThickness="1,1,1,1" Foreground="White" ItemTemplate="{StaticResource ResultsListViewTemplate}" ItemsSource="{x:Bind KnownDevices, Mode=OneWay}"/>
+        <TextBox x:Name="StreamBox" Grid.Row="11" Grid.Column="1" Grid.ColumnSpan="3" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" BorderBrush="Red" BorderThickness="1,1,1,1" Background="{x:Null}" Foreground="White" TextWrapping="Wrap"/>
+        <TextBox x:Name="MessageBox" Grid.Row="1" Grid.Column="3" Grid.RowSpan="10"  HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" BorderBrush="Red" BorderThickness="1,1,1,1" Foreground="White" TextWrapping="Wrap"/>
+        <ToggleSwitch x:Name="DoWeQuaternionToggle" Grid.Column="1" Header="Quaternion Coordinates" Grid.Row="8" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" Toggled="DoWeQuaternionToggle_Toggled"/>
+        <ToggleSwitch x:Name="DoWeSaveToggle" Grid.Column="1" Header="Save Data Streamed" Grid.Row="9" VerticalAlignment="Stretch" HorizontalAlignment="Stretch"/>
     </Grid>
 </Page>
