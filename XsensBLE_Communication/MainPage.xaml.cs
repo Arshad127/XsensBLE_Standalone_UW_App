@@ -5,6 +5,7 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading;
 using System.Threading.Tasks;
@@ -36,14 +37,18 @@ namespace XsensBLE_Communication
     public sealed partial class MainPage : Page
     {
         private ObservableCollection<BluetoothLEDeviceDisplay> KnownDevices = new ObservableCollection<BluetoothLEDeviceDisplay>();
-        private List<XsensDotDevice> xSensDotDevicesList = new List<XsensDotDevice>();
+        private List<DeviceInformation> UnknownDevices = new List<DeviceInformation>();
+        private List<XsensDotDevice> xSensDotDevicesList = new List<XsensDotDevice>(); // Items queued for measurement
+
+        private ConcurrentDictionary<XsensDotDevice, Quaternion> quaternionsDictionary = new ConcurrentDictionary<XsensDotDevice, Quaternion>();
 
         private string allMessages = "";
         private string allStreams = "";
-        private bool isStreaming = false;
-        private PayloadType payloadType = PayloadType.CompleteEuler;
+        private bool isStreaming = false; // this is used for the multi-threaded streaming
 
-        private List<DeviceInformation> UnknownDevices = new List<DeviceInformation>();
+        private PayloadType payloadType = PayloadType.CompleteQuaternion; // Default flag for recording and display types
+
+        private string rootPath = @"C:\Users\masee\Downloads";
         private DeviceWatcher deviceWatcher;
 
         public string SelectedBleDeviceId;
@@ -96,10 +101,93 @@ namespace XsensBLE_Communication
             }
 
             // We do a snip to keep the printing snappy
-            if (allStreams.Length > 1000)
+            if (allStreams.Length > 2000)
             {
-                allStreams = allStreams.Substring(0, 900);
+                allStreams = allStreams.Substring(0, 1900);
             }
+        }
+
+        public void UpdateQuaternionsRegistry(XsensDotDevice refDevice, Quaternion newQuaternion)
+        {
+            if (quaternionsDictionary.ContainsKey(refDevice))
+            {
+                quaternionsDictionary[refDevice] = newQuaternion;
+            }
+            else
+            {
+                NotifyUser($"[ERR] Cannot update the quaternions dictionary since {refDevice.UniqueDeviceName} is not in the dictionary.");
+            }
+
+            if (quaternionsDictionary.Count >= 2) // If we dont have two devices queued up, can't get an angle can we now?
+            {
+                // Fire & Forget kinda task
+                Task.Run(() =>
+                  {
+                      Vector3 angle;
+                      Quaternion deltaQuaternion = Quaternion.Identity;
+
+                      deltaQuaternion = quaternionsDictionary.ElementAt(0).Value * Quaternion.Inverse(quaternionsDictionary.ElementAt(1).Value);
+                      angle = ToEulerAngles(deltaQuaternion);
+
+                      if (angle.X > 180) { angle.X -= 360.0f; }
+                      if (angle.Y > 180) { angle.Y -= 360.0f; }
+                      if (angle.Z > 180) { angle.Z -= 360.0f; }
+
+                    // Update the UI
+                    var task = Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
+                    {
+                        //InstantAngleX.Text = angle.X.ToString();
+                        //InstantAngleY.Text = angle.Y.ToString();
+                        //InstantAngleZ.Text = angle.Z.ToString();
+
+                        InstantAngleX.Text = Math.Round(angle.X, 1).ToString();
+                        InstantAngleY.Text = Math.Round(angle.Y, 1).ToString();
+                        InstantAngleZ.Text = Math.Round(angle.Z, 1).ToString();
+                    });
+                });
+            }
+        }
+
+
+        // Bit of a math method here from https://stackoverflow.com/questions/70462758/c-sharp-how-to-convert-quaternions-to-euler-angles-xyz
+        public static Vector3 ToEulerAngles(Quaternion q)
+        {
+            Vector3 angleInRad = new Vector3();
+            Vector3 angleInDeg = new Vector3();
+
+            // roll / x
+            double sinr_cosp = 2 * (q.W * q.X + q.Y * q.Z);
+            double cosr_cosp = 1 - 2 * (q.X * q.X + q.Y * q.Y);
+            angleInRad.X = (float)Math.Atan2(sinr_cosp, cosr_cosp);
+
+            // pitch / y
+            double sinp = 2 * (q.W * q.Y - q.Z * q.X);
+            if (Math.Abs(sinp) >= 1)
+            {
+                if (sinp >= 0) // positive
+                {
+                    angleInRad.Y = (float)Math.PI / 2;
+                }
+                else // she negative
+                {
+                    angleInRad.Y = -(float)Math.PI / 2;
+                }
+            }
+            else
+            {
+                angleInRad.Y = (float)Math.Asin(sinp);
+            }
+
+            // yaw / z
+            double siny_cosp = 2 * (q.W * q.Z + q.X * q.Y);
+            double cosy_cosp = 1 - 2 * (q.Y * q.Y + q.Z * q.Z);
+            angleInRad.Z = (float)Math.Atan2(siny_cosp, cosy_cosp);
+
+            angleInDeg.X = 180.0f / (float)Math.PI * angleInRad.X;
+            angleInDeg.Y = 180.0f / (float)Math.PI * angleInRad.Y;
+            angleInDeg.Z = 180.0f / (float)Math.PI * angleInRad.Z;
+
+            return angleInDeg;
         }
 
 
@@ -116,6 +204,7 @@ namespace XsensBLE_Communication
             StreamingButton.Content = $"Start Streaming ({xSensDotDevicesList.Count})";
             ResetHeadingButton.Content = $"Reset Heading ({xSensDotDevicesList.Count})";
             SynchroniseButton.Content = $"Synchronise ({xSensDotDevicesList.Count})";
+
         }
 
         /// <summary>
@@ -157,11 +246,15 @@ namespace XsensBLE_Communication
             if (!xSensDotDevicesList.Contains(newDevice))
             {
                 xSensDotDevicesList.Add(newDevice);
+                quaternionsDictionary.TryAdd(newDevice,new Quaternion());
+
                 NotifyUser($"The device {newDevice.UniqueDeviceName} has been queued up");
             }
             else
             {
                 xSensDotDevicesList.Remove(newDevice);
+                quaternionsDictionary.TryRemove(newDevice, out Quaternion outValue);
+
                 NotifyUser($"The device {newDevice.UniqueDeviceName} has been removed");
             }
 
@@ -179,7 +272,7 @@ namespace XsensBLE_Communication
             {
                 foreach (var device in xSensDotDevicesList)
                 {
-                    device.SubscribeToBattery();
+                    await device.SubscribeToBattery();
                 }
             }
             else
@@ -207,6 +300,7 @@ namespace XsensBLE_Communication
             {
                 foreach (var device in xSensDotDevicesList)
                 {
+                    NotifyUser($"[info] Running .SubscribeToMeasurement on {device.UniqueDeviceName} from root page");
                     device.SubscribeToMeasurement(payloadType);
 
                     //device.StreamSplitThread();
@@ -424,20 +518,18 @@ namespace XsensBLE_Communication
 
         #endregion
 
-        private void DoWeQuaternionToggle_Toggled(object sender, RoutedEventArgs e)
+        private void WeWantEuler_Toggled(object sender, RoutedEventArgs e)
         {
-
-            if (DoWeQuaternionToggle.IsOn)
-            {
-                NotifyUser("[info] Yeah got it we want Quaternions");
-                payloadType = PayloadType.CompleteQuaternion;
-            }
-            else
+            if (WeWantEulerToggle.IsOn)
             {
                 NotifyUser("[info] Alright Euler then!");
                 payloadType = PayloadType.CompleteEuler;
             }
+            else
+            {
+                NotifyUser("[info] Yeah got it we want Quaternions");
+                payloadType = PayloadType.CompleteQuaternion;
+            }
         }
-
     }
 }

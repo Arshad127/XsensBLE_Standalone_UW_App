@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Text;
 using System.Threading;
@@ -50,10 +52,12 @@ namespace XsensBLE_Communication
 
         private IReadOnlyList<GattDeviceService> services;
 
+        private Quaternion myQuaternion = new Quaternion();
 
 
 
-        private MainPage rootPage;
+        // Reference to the main page
+        private readonly MainPage _rootPage;
 
 
         #endregion
@@ -69,7 +73,7 @@ namespace XsensBLE_Communication
 
             DeviceInformation = deviceInfoIn;
             this.UniqueDeviceName = "DOT " + deviceInfoIn.Id.Split("-")[1].ToUpper();
-            this.rootPage = rootPage;
+            this._rootPage = rootPage;
         }
 
         public string UniqueDeviceName { get; private set; }
@@ -88,16 +92,16 @@ namespace XsensBLE_Communication
 
         public async Task PairToDevice()
         {
-            rootPage.NotifyUser($"[info] Pairing to {UniqueDeviceName} started, please wait...");
+            _rootPage.NotifyUser($"[info] Pairing to {UniqueDeviceName} started, please wait...");
             DevicePairingResult resultPair = await DeviceInformation.Pairing.PairAsync();
-            rootPage.NotifyUser($"[info] Pairing result to {UniqueDeviceName} = {resultPair.Status}");
+            _rootPage.NotifyUser($"[info] Pairing result to {UniqueDeviceName} = {resultPair.Status}");
         }
 
         private async Task Connect()
         {
             if (!IsPaired)
             {
-                rootPage.NotifyUser($"[err] Cannot connect without being paired to {UniqueDeviceName} first.");
+                _rootPage.NotifyUser($"[err] Cannot connect without being paired to {UniqueDeviceName} first.");
                 return;
             }
 
@@ -109,12 +113,12 @@ namespace XsensBLE_Communication
 
                 if (bluetoothLeDevice == null)
                 {
-                    rootPage.NotifyUser($"[err] Failed to connect to device {UniqueDeviceName}.");
+                    _rootPage.NotifyUser($"[err] Failed to connect to device {UniqueDeviceName}.");
                 }
             }
             catch (Exception ex) when (ex.HResult == E_DEVICE_NOT_AVAILABLE)
             {
-                rootPage.NotifyUser($"[err] Bluetooth radio is not on for {UniqueDeviceName}.");
+                _rootPage.NotifyUser($"[err] Bluetooth radio is not on for {UniqueDeviceName}.");
             }
         }
 
@@ -130,11 +134,11 @@ namespace XsensBLE_Communication
                 if (serviceResult.Status == GattCommunicationStatus.Success)
                 {
                     services = serviceResult.Services;
-                    rootPage.NotifyUser($"[info] Services successfully extracted from {UniqueDeviceName}.");
+                    _rootPage.NotifyUser($"[info] Services successfully extracted from {UniqueDeviceName}.");
                 }
                 else
                 {
-                    rootPage.NotifyUser($"[err] Cannot extracted services. {UniqueDeviceName} is unreachable.");
+                    _rootPage.NotifyUser($"[err] Cannot extracted services. {UniqueDeviceName} is unreachable.");
                 }
             }
         }
@@ -158,7 +162,7 @@ namespace XsensBLE_Communication
                 if (service.Uuid.Equals(serviceUuid))
                 {
                     targettedService = service;
-                    rootPage.NotifyUser($"[info] Service {serviceUuid.ToString()} of {UniqueDeviceName} found.");
+                    _rootPage.NotifyUser($"[info] Service {serviceUuid.ToString()} of {UniqueDeviceName} found.");
                 }
             }
 
@@ -182,14 +186,14 @@ namespace XsensBLE_Communication
                                 if (characteristic.Uuid.Equals(characteristicUuid))
                                 {
                                     targettedCharacteristic = characteristic;
-                                    rootPage.NotifyUser($"[info] Characteristic {characteristicUuid.ToString()} of {UniqueDeviceName} found.");
+                                    _rootPage.NotifyUser($"[info] Characteristic {characteristicUuid.ToString()} of {UniqueDeviceName} found.");
                                     //batteryCharacteristic = characteristic; // set the global variable while we are here
                                 }
                             }
                         }
                         else
                         {
-                            rootPage.NotifyUser($"[err] Error accessing service in {UniqueDeviceName}.");
+                            _rootPage.NotifyUser($"[err] Error accessing service in {UniqueDeviceName}.");
 
                             // On error, act as if there are no characteristics.
                             characteristics = new List<GattCharacteristic>();
@@ -198,7 +202,7 @@ namespace XsensBLE_Communication
                     else
                     {
                         // Not granted access
-                        rootPage.NotifyUser($"[err] Error accessing service in {UniqueDeviceName}.");
+                        _rootPage.NotifyUser($"[err] Error accessing service in {UniqueDeviceName}.");
 
                         // On error, act as if there are no characteristics.
                         characteristics = new List<GattCharacteristic>();
@@ -206,7 +210,7 @@ namespace XsensBLE_Communication
                 }
                 catch (Exception ex)
                 {
-                    rootPage.NotifyUser($"[err] Restricted service. Can't read characteristics of {UniqueDeviceName}: " + ex.Message);
+                    _rootPage.NotifyUser($"[err] Restricted service. Can't read characteristics of {UniqueDeviceName}: " + ex.Message);
                     // On error, act as if there are no characteristics.
                     characteristics = new List<GattCharacteristic>();
                 }
@@ -224,7 +228,7 @@ namespace XsensBLE_Communication
             streamingThread = new Thread(() => SubscribeToMeasurement(PayloadType.CompleteEuler));
             streamingThread.Start();
             isStreaming = true;
-            rootPage.NotifyUser($"[info] [{UniqueDeviceName}] NEW THREAD STARTED AND STREAMING");
+            _rootPage.NotifyUser($"[info] [{UniqueDeviceName}] NEW THREAD STARTED AND STREAMING");
         }
 
         public void StopStreaming()
@@ -286,17 +290,17 @@ namespace XsensBLE_Communication
                     if (status == GattCommunicationStatus.Success)
                     {
                         AddValueChangedHandlerMeasurement(); // will set isMeasurementSubscribed flag to true as well
-                        rootPage.NotifyUser($"[info] Measurement Notification for {UniqueDeviceName} is on.");
+                        _rootPage.NotifyUser($"[info] Measurement Notification for {UniqueDeviceName} is on.");
                     }
                     else
                     {
-                        rootPage.NotifyUser($"[err] Error registering for measurement changes: {status} for {UniqueDeviceName}.");
+                        _rootPage.NotifyUser($"[err] Error registering for measurement changes: {status} for {UniqueDeviceName}.");
                     }
                 }
                 catch (UnauthorizedAccessException ex)
                 {
                     // This usually happens when a device reports that it support indicate, but it actually doesn't.
-                    rootPage.NotifyUser($"[excpt] for {UniqueDeviceName} -> {ex.Message}");
+                    _rootPage.NotifyUser($"[excpt] for {UniqueDeviceName} -> {ex.Message}");
                 }
             }
             else // here we are unsubscribing
@@ -313,17 +317,17 @@ namespace XsensBLE_Communication
                     {
                         isMeasurementSubscribed = false;
                         RemoveValueChangedHandlerMeasurement();
-                        rootPage.NotifyUser($"[info] Successfully un-registered for notifications for {UniqueDeviceName}.");
+                        _rootPage.NotifyUser($"[info] Successfully un-registered for notifications for {UniqueDeviceName}.");
                     }
                     else
                     {
-                        rootPage.NotifyUser($"[err] Error un-registering for notifications: {result} for {UniqueDeviceName}.");
+                        _rootPage.NotifyUser($"[err] Error un-registering for notifications: {result} for {UniqueDeviceName}.");
                     }
                 }
                 catch (UnauthorizedAccessException ex)
                 {
                     // This usually happens when a device reports that it support notify, but it actually doesn't.
-                    rootPage.NotifyUser($"[excpt] for {UniqueDeviceName} -> {ex.Message}");
+                    _rootPage.NotifyUser($"[excpt] for {UniqueDeviceName} -> {ex.Message}");
                 }
             }
 
@@ -332,7 +336,7 @@ namespace XsensBLE_Communication
             GattReadResult xSensControlData = await controlCharacteristic.ReadValueAsync(BluetoothCacheMode.Uncached);
 
             // Lets see what we get eh
-            rootPage.NotifyUser("[BEFORE]" + FormatValueByPresentation(xSensControlData.Value, PayloadType.MeasurementGeneralDetails));
+            _rootPage.NotifyUser("[BEFORE]" + FormatValueByPresentation(xSensControlData.Value, PayloadType.MeasurementGeneralDetails));
 
             // Get the byte array and edit
             byte[] controlDataArray = GetByteArray(xSensControlData.Value);
@@ -344,7 +348,7 @@ namespace XsensBLE_Communication
 
             // Read again and see
             xSensControlData = await controlCharacteristic.ReadValueAsync(BluetoothCacheMode.Uncached);
-            rootPage.NotifyUser("[AFTER]" + FormatValueByPresentation(xSensControlData.Value, PayloadType.MeasurementGeneralDetails));
+            _rootPage.NotifyUser("[AFTER]" + FormatValueByPresentation(xSensControlData.Value, PayloadType.MeasurementGeneralDetails));
 
         }
 
@@ -389,13 +393,13 @@ namespace XsensBLE_Communication
                     }
                     else
                     {
-                        rootPage.NotifyUser($"[err] Error registering for value changes: {status} for {UniqueDeviceName}.");
+                        _rootPage.NotifyUser($"[err] Error registering for value changes: {status} for {UniqueDeviceName}.");
                     }
                 }
                 catch (UnauthorizedAccessException ex)
                 {
                     // This usually happens when a device reports that it support indicate, but it actually doesn't.
-                    rootPage.NotifyUser($"[excpt] for {UniqueDeviceName} -> {ex.Message}");
+                    _rootPage.NotifyUser($"[excpt] for {UniqueDeviceName} -> {ex.Message}");
                 }
             }
             else // here we are unsubscribing
@@ -412,17 +416,17 @@ namespace XsensBLE_Communication
                     {
                         isBatterySubscribed = false;
                         RemoveValueChangedHandlerBattery();
-                        rootPage.NotifyUser($"[info] Successfully un-registered for notifications for {UniqueDeviceName}.");
+                        _rootPage.NotifyUser($"[info] Successfully un-registered for notifications for {UniqueDeviceName}.");
                     }
                     else
                     {
-                        rootPage.NotifyUser($"[err] Error un-registering for notifications: {result} for {UniqueDeviceName}.");
+                        _rootPage.NotifyUser($"[err] Error un-registering for notifications: {result} for {UniqueDeviceName}.");
                     }
                 }
                 catch (UnauthorizedAccessException ex)
                 {
                     // This usually happens when a device reports that it support notify, but it actually doesn't.
-                    rootPage.NotifyUser($"[excpt] for {UniqueDeviceName} -> {ex.Message}");
+                    _rootPage.NotifyUser($"[excpt] for {UniqueDeviceName} -> {ex.Message}");
                 }
             }
 
@@ -431,11 +435,11 @@ namespace XsensBLE_Communication
             GattReadResult gattReadTempResult1 = await batteryCharacteristic.ReadValueAsync(BluetoothCacheMode.Uncached);
             if (gattReadTempResult1.Status == GattCommunicationStatus.Success)
             {
-                rootPage.NotifyUser(FormatValueByPresentation(gattReadTempResult1.Value, PayloadType.BatteryDetails));
+                _rootPage.NotifyUser(FormatValueByPresentation(gattReadTempResult1.Value, PayloadType.BatteryDetails));
             }
             else
             {
-                rootPage.NotifyUser($"[err] Read failed in {UniqueDeviceName}: {gattReadTempResult1.Status}");
+                _rootPage.NotifyUser($"[err] Read failed in {UniqueDeviceName}: {gattReadTempResult1.Status}");
             }
         }
 
@@ -450,7 +454,7 @@ namespace XsensBLE_Communication
             registeredBatteryCharacteristic = batteryCharacteristic;
             registeredBatteryCharacteristic.ValueChanged += Characteristic_BatteryValueChanged;
             isBatterySubscribed = true;
-            rootPage.NotifyUser($"[info] {UniqueDeviceName} Successfully subscribed for battery changes");
+            _rootPage.NotifyUser($"[info] {UniqueDeviceName} Successfully subscribed for battery changes");
         }
 
         private void RemoveValueChangedHandlerBattery()
@@ -460,12 +464,12 @@ namespace XsensBLE_Communication
             registeredBatteryCharacteristic.ValueChanged -= Characteristic_BatteryValueChanged;
             registeredBatteryCharacteristic = null;
             isBatterySubscribed = false;
-            rootPage.NotifyUser($"[info] {UniqueDeviceName} Successfully un subscribed for battery changes");
+            _rootPage.NotifyUser($"[info] {UniqueDeviceName} Successfully un subscribed for battery changes");
         }
 
         private void Characteristic_BatteryValueChanged(GattCharacteristic sender, GattValueChangedEventArgs args)
         {
-            rootPage.NotifyUser(FormatValueByPresentation(args.CharacteristicValue, PayloadType.BatteryDetails));
+            _rootPage.NotifyUser(FormatValueByPresentation(args.CharacteristicValue, PayloadType.BatteryDetails));
         }
 
         private void AddValueChangedHandlerMeasurement()
@@ -475,7 +479,7 @@ namespace XsensBLE_Communication
             registeredMeasurementCharacteristic = mediumPayLoadCharacteristic;
             registeredMeasurementCharacteristic.ValueChanged += Characteristic_MeasurementValueChanged;
             isMeasurementSubscribed = true;
-            rootPage.NotifyUser($"[info] {UniqueDeviceName} Successfully subscribed for measurement value changes");
+            _rootPage.NotifyUser($"[info] {UniqueDeviceName} Successfully subscribed for measurement value changes");
         }
 
         private void RemoveValueChangedHandlerMeasurement()
@@ -485,12 +489,12 @@ namespace XsensBLE_Communication
             registeredMeasurementCharacteristic.ValueChanged -= Characteristic_MeasurementValueChanged;
             registeredMeasurementCharacteristic = null;
             isMeasurementSubscribed = false;
-            rootPage.NotifyUser($"[info] {UniqueDeviceName} Successfully un-subscribed for measurement changes");
+            _rootPage.NotifyUser($"[info] {UniqueDeviceName} Successfully un-subscribed for measurement changes");
         }
 
         private void Characteristic_MeasurementValueChanged(GattCharacteristic sender, GattValueChangedEventArgs args)
         {
-            rootPage.StreamData(FormatValueByPresentation(args.CharacteristicValue, this.payloadType));
+            _rootPage.StreamData(FormatValueByPresentation(args.CharacteristicValue, this.payloadType));
         }
 
 
@@ -532,6 +536,7 @@ namespace XsensBLE_Communication
                         freeAccZ = BitConverter.ToSingle(freeAccSubArrZ, 0).ToString();
 
                         outString = $"[{UniqueDeviceName}] Time: {timeStamp}, X: {eulerX}, Y: {eulerY}, Z: {eulerZ}, AccX: {freeAccX}, AccY: {freeAccY}, AccZ: {freeAccZ}";
+
                     }
                     break;
 
@@ -556,7 +561,16 @@ namespace XsensBLE_Communication
                         freeAccY = BitConverter.ToSingle(freeAccSubArrY, 0).ToString();
                         freeAccZ = BitConverter.ToSingle(freeAccSubArrZ, 0).ToString();
 
-                        outString = $"[{UniqueDeviceName}] Time: {timeStamp}, W: {quatW} X: {quatX}, Y: {quatY}, Z: {quatZ}, AccX: {freeAccX}, AccY: {freeAccY}, AccZ: {freeAccZ}";
+                        outString = $"[{UniqueDeviceName}] Time: {timeStamp}, W: {quatW}, X: {quatX}, Y: {quatY}, Z: {quatZ}, AccX: {freeAccX}, AccY: {freeAccY}, AccZ: {freeAccZ}";
+
+                        // Fill up the myQuaternion details
+                        myQuaternion.W = float.Parse(quatW, CultureInfo.InvariantCulture.NumberFormat);
+                        myQuaternion.X = float.Parse(quatX, CultureInfo.InvariantCulture.NumberFormat);
+                        myQuaternion.Y = float.Parse(quatY, CultureInfo.InvariantCulture.NumberFormat);
+                        myQuaternion.Z = float.Parse(quatZ, CultureInfo.InvariantCulture.NumberFormat);
+
+                        // send it and hope
+                        _rootPage.UpdateQuaternionsRegistry(this, myQuaternion);
                     }
                     break;
                 case PayloadType.MeasurementGeneralDetails:
