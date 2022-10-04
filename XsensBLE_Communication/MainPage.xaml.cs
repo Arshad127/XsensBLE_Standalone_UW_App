@@ -122,7 +122,7 @@ namespace XsensBLE_Communication
             {
                 // Fire & Forget kinda task
                 Task.Run(() =>
-                  {
+                {
                       Vector3 angle;
                       Quaternion deltaQuaternion = Quaternion.Identity;
 
