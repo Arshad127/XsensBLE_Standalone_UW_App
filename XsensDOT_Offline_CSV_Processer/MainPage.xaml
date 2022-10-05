@@ -19,29 +19,35 @@
 
         <Grid.RowDefinitions>
             <RowDefinition Height="20"/>
-            <RowDefinition Height="50"/>
-            <RowDefinition Height="50"/>
-            <RowDefinition Height="50"/>
+            <RowDefinition Height="40"/>
+            <RowDefinition Height="10"/>
+            <RowDefinition Height="40"/>
+            <RowDefinition Height="10"/>
+            <RowDefinition Height="40"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="50"/>
-            <RowDefinition Height="50"/>
+            <RowDefinition Height="100"/>
             <RowDefinition Height="20"/>
         </Grid.RowDefinitions>
 
         <Button x:Name="BrowseLoadDot1Csv" Grid.Row="1" Grid.Column="1" Content="Browse CSV 1 DOTs" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" Background="White" Foreground="Black" Click="BrowseLoadDot1Csv_Click" />
-        <Button x:Name="BrowseLoadDot2Csv" Grid.Row="2" Grid.Column="1" Content="Browse CSV 2 DOTs" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" Background="White" Foreground="Black" Click="BrowseLoadDot2Csv_Click" />
-        <Button x:Name="LoadCsvFiles" Grid.Row="3" Grid.Column="1" Content="Load CSVs" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" Background="White" Foreground="Black" />
+        <Button x:Name="BrowseLoadDot2Csv" Grid.Row="3" Grid.Column="1" Content="Browse CSV 2 DOTs" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" Background="White" Foreground="Black" Click="BrowseLoadDot2Csv_Click" />
+        <Button x:Name="LoadCsvFiles" Grid.Row="5" Grid.Column="1" Content="Load CSVs" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" Background="White" Foreground="Black" Click="LoadCsvFiles_Click" />
 
         <TextBox x:Name="Dot1CsvPath" Grid.Row="1" Grid.Column="2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" BorderBrush="OrangeRed" BorderThickness="1,1,1,1" Background="Black" Foreground="White" IsReadOnly="True" />
-        <TextBox x:Name="Dot2CsvPath" Grid.Row="2" Grid.Column="2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" BorderBrush="OrangeRed" BorderThickness="1,1,1,1" Background="Black" Foreground="White" IsReadOnly="True"/>
-        <ProgressBar x:Name="LoadingProgressBar" Grid.Row="3" Grid.Column="2" HorizontalAlignment="Stretch" Margin="2" VerticalAlignment="Stretch" IsIndeterminate="True" Foreground="OrangeRed" Background="Black"/>
-        <Button x:Name="SaveCsvFiles" Grid.Row="5" Grid.Column="1" Content="Save CSVs" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" Background="White" Foreground="Black" />
-        <TextBox x:Name="SaveCsvPath" Grid.Row="5" Grid.Column="2" Grid.ColumnSpan="2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" BorderBrush="OrangeRed" BorderThickness="1,1,1,1" Background="{x:Null}" Foreground="White" />
-        <TextBox x:Name="MessageBox" Grid.Row="6" Grid.Column="1" Grid.ColumnSpan="3" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" BorderBrush="Black" BorderThickness="1,1,1,1" Foreground="White" />
+        <ProgressBar x:Name="LoadingCsv1ProgressBar" Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="3" HorizontalAlignment="Stretch" Margin="2" VerticalAlignment="Stretch" Foreground="GreenYellow" Background="Black"/>
+
+        <TextBox x:Name="Dot2CsvPath" Grid.Row="3" Grid.Column="2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" BorderBrush="OrangeRed" BorderThickness="1,1,1,1" Background="Black" Foreground="White" IsReadOnly="True"/>
+        <ProgressBar x:Name="LoadingCsv2ProgressBar" Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="3" HorizontalAlignment="Stretch" Margin="2" VerticalAlignment="Stretch" Foreground="GreenYellow" Background="Black"/>
+
+        <ProgressBar x:Name="LoadingProgressBar" Grid.Row="5" Grid.Column="2" HorizontalAlignment="Stretch" Margin="2" VerticalAlignment="Stretch" IsIndeterminate="True" Foreground="OrangeRed" Background="Black"/>
+        <Button x:Name="SaveCsvFiles" Grid.Row="7" Grid.Column="1" Content="Save CSVs" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" Background="White" Foreground="Black" />
+        <TextBox x:Name="SaveCsvPath" Grid.Row="7" Grid.Column="2" Grid.ColumnSpan="2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" BorderBrush="OrangeRed" BorderThickness="1,1,1,1" Background="{x:Null}" Foreground="White" />
+        <TextBox x:Name="MessageBox" Grid.Row="8" Grid.Column="1" Grid.ColumnSpan="3" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" BorderBrush="Black" BorderThickness="1,1,1,1" Foreground="White"  TextWrapping="Wrap"/>
 
         <TextBox x:Name="Dot1CsvTimeStamp" Grid.Row="1" Grid.Column="3" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" BorderBrush="OrangeRed" BorderThickness="1,1,1,1" Background="Black" Foreground="White" IsReadOnly="True" />
-        <TextBox x:Name="Dot2CsvTimeStamp" Grid.Row="2" Grid.Column="3" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" BorderBrush="OrangeRed" BorderThickness="1,1,1,1" Background="Black" Foreground="White" IsReadOnly="True"/>
-        <TextBox x:Name="CsvTimeStampOffset" Grid.Row="3" Grid.Column="3" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" BorderBrush="OrangeRed" BorderThickness="1,1,1,1" Background="Black" Foreground="White" />
+        <TextBox x:Name="Dot2CsvTimeStamp" Grid.Row="3" Grid.Column="3" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" BorderBrush="OrangeRed" BorderThickness="1,1,1,1" Background="Black" Foreground="White" IsReadOnly="True"/>
+        <TextBox x:Name="CsvTimeStampOffset" Grid.Row="5" Grid.Column="3" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="2" BorderBrush="OrangeRed" BorderThickness="1,1,1,1" Background="Black" Foreground="White"/>
 
     </Grid>
 </Page>
