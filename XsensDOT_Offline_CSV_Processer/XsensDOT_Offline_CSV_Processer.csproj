@@ -126,6 +126,7 @@
     <Compile Include="Utilities\BooleanSecondChance.cs" />
     <Compile Include="Utilities\CsvFileDetailsModel.cs" />
     <Compile Include="Utilities\CsvParse.cs" />
+    <Compile Include="Utilities\Enums.cs" />
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest">
@@ -185,7 +186,10 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NETCore.UniversalWindowsPlatform">
-      <Version>6.2.12</Version>
+      <Version>6.2.14</Version>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Toolkit.Uwp.UI.Controls.DataGrid">
+      <Version>7.1.2</Version>
     </PackageReference>
   </ItemGroup>
   <ItemGroup />

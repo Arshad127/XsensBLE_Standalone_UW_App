@@ -1,10 +1,12 @@
-﻿using System;
+﻿using Microsoft.Toolkit.Uwp.UI.Controls;
+using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Data;
-using System.Drawing;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Security;
 using System.Threading;
@@ -23,7 +25,6 @@ using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Media.Imaging;
 using Windows.UI.Xaml.Navigation;
 using XsensDOT_Offline_CSV_Processer.Utilities;
-using Color = Windows.UI.Color;
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
 
@@ -41,18 +42,17 @@ namespace XsensDOT_Offline_CSV_Processer
         private string processedDotCsvPath = null;
         private FileOpenPicker openPicker = null;
 
-        private DataTable csvDataTable1, csvDataTable2;
+        private DataTable csvDataTable1, csvDataTable2, combinedCsvDataTable;
         private DataSet dataSet;
         private string consoleMessageThread = "";
 
         private CsvFileDetailsModel csv1BriefDetails;
         private CsvFileDetailsModel csv2BriefDetails;
 
-
         public MainPage()
         {
             this.InitializeComponent();
-            LoadCsvFiles.IsEnabled = false;
+            ComputeAngles.IsEnabled = false;
             SaveCsvFiles.IsEnabled = false;
         }
 
@@ -62,7 +62,7 @@ namespace XsensDOT_Offline_CSV_Processer
         private async void BrowseLoadDot1Csv_Click(object sender, RoutedEventArgs e)
         {
             Dot1CsvTimeStamp.Text = "0"; // set the time stamp to 0 in case the button is pressed repeatedly
-            csvDataTable1 = SetUpDataTable("CSV_DOT_1"); // preps the table so we can insert data into it in the next step
+            csvDataTable1 = SetUpDataTable("1"); // preps the table so we can insert data into it in the next step
             csv1BriefDetails = await BrowseAndLoadFilePath(LoadingCsv1ProgressBar, csvDataTable1); // file selection and parsing
             dotCsvPath1 = csv1BriefDetails.FilePath; // to keep the global variable happy
             Dot1CsvPath.Text = csv1BriefDetails.FilePath; // displays the file path on the UI
@@ -73,9 +73,8 @@ namespace XsensDOT_Offline_CSV_Processer
             {
                 processedDotCsvPath = GenerateProcessedFilePath(dotCsvPath1, dotCsvPath2);
                 SaveCsvPath.Text = processedDotCsvPath;
-                LoadCsvFiles.IsEnabled = true; // enables the button
+                ComputeAngles.IsEnabled = true; // enables the button
 
-                // calculate the time offset
                 // calculate the time offset
                 CsvTimeStampOffset.Text = "Delta = " +
                                           Math.Abs(csv1BriefDetails.FirstTimeStamp - csv2BriefDetails.FirstTimeStamp) + "μs";
@@ -88,7 +87,7 @@ namespace XsensDOT_Offline_CSV_Processer
         private async void BrowseLoadDot2Csv_Click(object sender, RoutedEventArgs e)
         {
             Dot2CsvTimeStamp.Text = "0"; // set the time stamp to 0 in case the button is pressed repeatedly
-            csvDataTable2 = SetUpDataTable("CSV_DOT_2"); // preps the table so we can insert data into it in the next step
+            csvDataTable2 = SetUpDataTable("2"); // preps the table so we can insert data into it in the next step
             csv2BriefDetails = await BrowseAndLoadFilePath(LoadingCsv2ProgressBar, csvDataTable2); // file selection and parsing
             dotCsvPath2 = csv2BriefDetails.FilePath; // to keep the global variable happy
             Dot2CsvPath.Text = csv2BriefDetails.FilePath; // displays the file path on the UI
@@ -99,11 +98,10 @@ namespace XsensDOT_Offline_CSV_Processer
             {
                 processedDotCsvPath = GenerateProcessedFilePath(dotCsvPath1, dotCsvPath2);
                 SaveCsvPath.Text = processedDotCsvPath;
-                LoadCsvFiles.IsEnabled = true; // enables the button
-
+                ComputeAngles.IsEnabled = true; // enables the button
 
                 // calculate the time offset
-                CsvTimeStampOffset.Text = "Delta = " + 
+                CsvTimeStampOffset.Text = "Delta = " +
                                           Math.Abs(csv1BriefDetails.FirstTimeStamp - csv2BriefDetails.FirstTimeStamp) + "μs";
             }
         }
@@ -111,9 +109,59 @@ namespace XsensDOT_Offline_CSV_Processer
         /// <summary>
         /// Load and parse the CSVs
         /// </summary>
-        private void LoadCsvFiles_Click(object sender, RoutedEventArgs e)
+        private void ComputeAngles_Click(object sender, RoutedEventArgs e)
         {
+            // Disable the picker buttons.
+            // It'll be messy if source files are changing while processing
+            BrowseLoadDot1Csv.IsEnabled = false;
+            BrowseLoadDot2Csv.IsEnabled = false;
 
+            // Combine the tables
+            //csvDataTable2.Merge(csvDataTable1);
+
+            // Print the table
+            FillDataGrid(csvDataTable2, UIDataGrid);
+
+            DataRelation dtRelation;
+            DataColumn dot1TimeColumn = dataSet.Tables["XSENS_MEASUREMENT_DATA_CSV_DOT_1"].Columns[""];
+            //DataColumn dot2TimeColumn = dataSet.Tables["XSENS_MEASUREMENT_DATA_CSV_DOT_2"].Columns[""];
+            //DataColumn custCol = dtSet.Tables["Customers"].Columns[""];
+            //DataColumn orderCol = dtSet.Tables["orders"].Columns["custId"];
+            //dtRelation = new DataRelation("CustOrderRelation ", custCol, orderCol);
+            //dtSet.Tables["orders"].ParentRelations.Add(dtRelation);
+
+            //dtRelation = new DataRelation("XSENS_COMBINED_DATA", dot1TimeColumn, dot2TimeColumn);
+            //dataSet.Tables
+
+            // Parse through the table and compute the angles each
+
+
+
+        }
+
+        /// <summary>
+        /// https://stackoverflow.com/questions/53730207/how-to-fill-datagrid-with-datatable-content-in-uwp-c-sharp
+        /// </summary>
+        private static void FillDataGrid(DataTable table, DataGrid grid)
+        {
+            grid.Columns.Clear();
+            grid.AutoGenerateColumns = false;
+            for (int i = 0; i < table.Columns.Count; i++)
+            {
+                grid.Columns.Add(new DataGridTextColumn()
+                {
+                    Header = table.Columns[i].ColumnName,
+                    Binding = new Binding { Path = new PropertyPath("[" + i.ToString() + "]") }
+                });
+            }
+
+            var collection = new ObservableCollection<object>();
+            foreach (DataRow row in table.Rows)
+            {
+                collection.Add(row.ItemArray);
+            }
+
+            grid.ItemsSource = collection;
         }
 
         private void SetProgressBarValue(ProgressBar progressBar, double progressValue)
@@ -128,37 +176,56 @@ namespace XsensDOT_Offline_CSV_Processer
             }
         }
 
-        private DataTable SetUpDataTable(string inputDataTableName)
+        /// <summary>
+        /// Create the tables skeleton for storing the data from the csv files
+        /// </summary>
+        private DataTable SetUpDataTable(string identifier)
         {
-            DataColumn dtColumn;
-            DataTable csvDataTable = new DataTable("XSENS_MEASUREMENT_DATA_" + inputDataTableName);
+            string tableName = "XSENS_MEASUREMENT_DATA_CSV_DOT_" + identifier;
+
+            // need to check for duplicate tables in the dataset.
+            // be weary of the race conditions given there is only one dataset being access by two tables
+            // ****CHECK RACE CONDITIONS*****
+            if (dataSet == null)
+            {
+                dataSet = new DataSet();
+            }
+            else if (dataSet.Tables.Contains(tableName))
+            {
+                // remove duplicate tables else problemo
+                dataSet.Tables.Remove(tableName);
+            }
+
+            DataTable csvDataTable = new DataTable(tableName);
 
             // Column
-            csvDataTable.Columns.Add("PacketCount", typeof(int));
+            csvDataTable.Columns.Add(Header.PacketCount + identifier, typeof(int));
 
             // Unique Column & primary key column
-            dtColumn = new DataColumn();
+            var dtColumn = new DataColumn();
             dtColumn.DataType = typeof(int);
-            dtColumn.ColumnName = "SampleTimeFine";
-            dtColumn.Caption = "SampleTimeFine";
+            dtColumn.ColumnName = Header.SampleTimeFine + identifier;
             dtColumn.AutoIncrement = false;
-            dtColumn.ReadOnly = false;
+            dtColumn.ReadOnly = true;
             dtColumn.Unique = true;
             csvDataTable.Columns.Add(dtColumn);
 
             // Workaround to create the unique primary key for this table
-            DataColumn[] primaryKeyColumns = new DataColumn[1];
-            primaryKeyColumns[0] = csvDataTable.Columns["SampleTimeFine"];
-            csvDataTable.PrimaryKey = primaryKeyColumns;
+            csvDataTable.PrimaryKey = new DataColumn[] {csvDataTable.Columns[Header.SampleTimeFine + identifier] };
 
-            csvDataTable.Columns.Add("Quat_W", typeof(double));
-            csvDataTable.Columns.Add("Quat_X", typeof(double));
-            csvDataTable.Columns.Add("Quat_Y", typeof(double));
-            csvDataTable.Columns.Add("Quat_Z", typeof(double));
-            csvDataTable.Columns.Add("FreeAcc_X", typeof(double));
-            csvDataTable.Columns.Add("FreeAcc_Y", typeof(double));
-            csvDataTable.Columns.Add("FreeAcc_Z", typeof(double));
-            csvDataTable.Columns.Add("Status", typeof(int));
+            //csvDataTable.Columns.Add(Header.Quat_W + identifier, typeof(double));
+            //csvDataTable.Columns.Add(Header.Quat_X + identifier, typeof(double));
+            //csvDataTable.Columns.Add(Header.Quat_Y + identifier, typeof(double));
+            //csvDataTable.Columns.Add(Header.Quat_Z + identifier, typeof(double));
+            //csvDataTable.Columns.Add(Header.FreeAcc_X + identifier, typeof(double));
+            //csvDataTable.Columns.Add(Header.FreeAcc_Y + identifier, typeof(double));
+            //csvDataTable.Columns.Add(Header.FreeAcc_Z + identifier, typeof(double));
+            csvDataTable.Columns.Add(Header.Status + identifier, typeof(int));
+            csvDataTable.Columns.Add(Header.Quat_Combined + identifier, typeof(Quaternion));
+            csvDataTable.Columns.Add(Header.FreeAcc_Combined + identifier, typeof(Vector3));
+
+            // add the table to the dataset
+            dataSet.Tables.Add(csvDataTable);
 
             return csvDataTable;
         }
@@ -270,21 +337,33 @@ namespace XsensDOT_Offline_CSV_Processer
                             CsvRow extractedRow = new CsvRow();
                             while (csvReader.ReadRow(extractedRow) || csvGapsAllowance.FeelingLucky())
                             {
-                                if ((extractedRow.Count > 9) && int.TryParse(extractedRow[0], out int packetNumber))
+                                if ((extractedRow.Count > 9) && int.TryParse(extractedRow[0], out var packetNumber))
                                 {
+                                    var sampleTimeFine = long.Parse(extractedRow[1], CultureInfo.InvariantCulture);
+                                    var quat_W = double.Parse(extractedRow[2], CultureInfo.InvariantCulture);
+                                    var quat_X = double.Parse(extractedRow[3], CultureInfo.InvariantCulture);
+                                    var quat_Y = double.Parse(extractedRow[4], CultureInfo.InvariantCulture);
+                                    var quat_Z = double.Parse(extractedRow[5], CultureInfo.InvariantCulture);
+                                    var freeAcc_X = double.Parse(extractedRow[6], CultureInfo.InvariantCulture);
+                                    var freeAcc_Y = double.Parse(extractedRow[7], CultureInfo.InvariantCulture);
+                                    var freeAcc_Z = double.Parse(extractedRow[8], CultureInfo.InvariantCulture);
+                                    var status = int.Parse(extractedRow[9], CultureInfo.InvariantCulture);
+
                                     rowCounter ++;
                                     dataTable.Rows.Add(new Object[]
                                     {
                                         packetNumber,
-                                        long.Parse(extractedRow[1], CultureInfo.InvariantCulture),
-                                        double.Parse(extractedRow[2], CultureInfo.InvariantCulture),
-                                        double.Parse(extractedRow[3], CultureInfo.InvariantCulture),
-                                        double.Parse(extractedRow[4], CultureInfo.InvariantCulture),
-                                        double.Parse(extractedRow[5], CultureInfo.InvariantCulture),
-                                        double.Parse(extractedRow[6], CultureInfo.InvariantCulture),
-                                        double.Parse(extractedRow[7], CultureInfo.InvariantCulture),
-                                        double.Parse(extractedRow[8], CultureInfo.InvariantCulture),
-                                        int.Parse(extractedRow[9], CultureInfo.InvariantCulture),
+                                        sampleTimeFine,
+                                        //quat_W,
+                                        //quat_X,
+                                        //quat_Y,
+                                        //quat_Z,
+                                        //freeAcc_X,
+                                        //freeAcc_Y,
+                                        //freeAcc_Z,
+                                        status,
+                                        new Quaternion((float)quat_X, (float)quat_Y, (float)quat_Z, (float)quat_W),
+                                        new Vector3((float)freeAcc_X, (float)freeAcc_Y, (float)freeAcc_Z)
                                     });
 
                                     // first time stamp gets printed on the UI for indication of whether or not data is synced
@@ -369,11 +448,5 @@ namespace XsensDOT_Offline_CSV_Processer
         }
     }
 
-    public enum ErrorTypes
-    {
-        Info,
-        Warning,
-        Error,
-        Exception
-    }
+
 }
