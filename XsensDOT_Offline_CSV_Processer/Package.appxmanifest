@@ -9,13 +9,13 @@
 
   <Identity
     Name="1781bc02-026e-472d-b9b5-b5be3fa659b3"
-    Publisher="CN=masee"
-    Version="1.0.0.0" />
+    Publisher="CN=Arshad127"
+    Version="1.2.0.0" />
 
   <mp:PhoneIdentity PhoneProductId="1781bc02-026e-472d-b9b5-b5be3fa659b3" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
   <Properties>
-    <DisplayName>XsensDOT_Offline_CSV_Processer</DisplayName>
+    <DisplayName>XsensDOT Joint Angle Exporter</DisplayName>
     <PublisherDisplayName>masee</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
@@ -33,14 +33,19 @@
       Executable="$targetnametoken$.exe"
       EntryPoint="XsensDOT_Offline_CSV_Processer.App">
       <uap:VisualElements
-        DisplayName="XsensDOT_Offline_CSV_Processor"
+        DisplayName="XsensDOT Joint Angle Exporter"
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png"
-        Description="XsensDOT_Offline_CSV_Processor"
+        Description="Application to work out the joint angles off recorded CSVs on the Xsens DOT Inertial Measurement Units."
         BackgroundColor="transparent">
         <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png"/>
         <uap:SplashScreen Image="Assets\SplashScreen.png"  BackgroundColor="white"/>
         <uap:LockScreen BadgeLogo="Assets\BadgeLogo.png" Notification="badge"/>
+        <uap:InitialRotationPreference>
+          <uap:Rotation Preference="landscape"/>
+          <uap:Rotation Preference="portrait"/>
+          <uap:Rotation Preference="landscapeFlipped"/>
+          <uap:Rotation Preference="portraitFlipped"/></uap:InitialRotationPreference>
       </uap:VisualElements>
     </Application>
   </Applications>

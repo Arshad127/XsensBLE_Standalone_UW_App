@@ -27,6 +27,7 @@ namespace XsensDOT_Offline_CSV_Processer.Utilities
         FreeAcc_Z,
         Status,
         Quat_Combined,
-        FreeAcc_Combined
+        FreeAcc_Combined,
+        JointAnglesDeg
     }
 }

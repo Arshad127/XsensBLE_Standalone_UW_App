@@ -61,23 +61,30 @@ namespace XsensDOT_Offline_CSV_Processer
         /// </summary>
         private async void BrowseLoadDot1Csv_Click(object sender, RoutedEventArgs e)
         {
-            Dot1CsvTimeStamp.Text = "0"; // set the time stamp to 0 in case the button is pressed repeatedly
-            csvDataTable1 = SetUpDataTable("1"); // preps the table so we can insert data into it in the next step
-            csv1BriefDetails = await BrowseAndLoadFilePath(LoadingCsv1ProgressBar, csvDataTable1); // file selection and parsing
-            dotCsvPath1 = csv1BriefDetails.FilePath; // to keep the global variable happy
-            Dot1CsvPath.Text = csv1BriefDetails.FilePath; // displays the file path on the UI
-            Dot1CsvTimeStamp.Text = csv1BriefDetails.FirstTimeStamp + "μs";
-
-            pathsValid = CheckPaths(dotCsvPath1, dotCsvPath2); // check the if the paths are good enough
-            if (pathsValid)
+            try
             {
-                processedDotCsvPath = GenerateProcessedFilePath(dotCsvPath1, dotCsvPath2);
-                SaveCsvPath.Text = processedDotCsvPath;
-                ComputeAngles.IsEnabled = true; // enables the button
+                Dot1CsvTimeStamp.Text = "";     // set the time stamp to 0 in case the button is pressed repeatedly
+                CsvTimeStampOffset.Text = "";   // set the offset time stamp to 0 in case the button is pressed repeatedly
+                csvDataTable1 = SetUpDataTable("1"); // preps the table so we can insert data into it in the next step
+                csv1BriefDetails = await BrowseAndLoadFilePath(LoadingCsv1ProgressBar, csvDataTable1); // file selection and parsing
+                dotCsvPath1 = csv1BriefDetails.FilePath; // to keep the global variable happy
+                Dot1CsvPath.Text = csv1BriefDetails.FilePath; // displays the file path on the UI
+                Dot1CsvTimeStamp.Text = csv1BriefDetails.FirstTimeStamp.ToString();
 
-                // calculate the time offset
-                CsvTimeStampOffset.Text = "Delta = " +
-                                          Math.Abs(csv1BriefDetails.FirstTimeStamp - csv2BriefDetails.FirstTimeStamp) + "μs";
+                pathsValid = CheckPaths(dotCsvPath1, dotCsvPath2); // check the if the paths are good enough
+                if (pathsValid)
+                {
+                    processedDotCsvPath = GenerateProcessedFilePath(dotCsvPath1, dotCsvPath2);
+                    SaveCsvPath.Text = processedDotCsvPath;
+                    ComputeAngles.IsEnabled = true; // enables the button
+
+                    // calculate the time offset
+                    CsvTimeStampOffset.Text = "Δt = " + Math.Abs(csv1BriefDetails.FirstTimeStamp - csv2BriefDetails.FirstTimeStamp);
+                }
+            }
+            catch (ArgumentNullException excptDetails)
+            {
+                NotifyUser(excptDetails.Message, ErrorTypes.Exception);
             }
         }
 
@@ -86,23 +93,30 @@ namespace XsensDOT_Offline_CSV_Processer
         /// </summary>
         private async void BrowseLoadDot2Csv_Click(object sender, RoutedEventArgs e)
         {
-            Dot2CsvTimeStamp.Text = "0"; // set the time stamp to 0 in case the button is pressed repeatedly
-            csvDataTable2 = SetUpDataTable("2"); // preps the table so we can insert data into it in the next step
-            csv2BriefDetails = await BrowseAndLoadFilePath(LoadingCsv2ProgressBar, csvDataTable2); // file selection and parsing
-            dotCsvPath2 = csv2BriefDetails.FilePath; // to keep the global variable happy
-            Dot2CsvPath.Text = csv2BriefDetails.FilePath; // displays the file path on the UI
-            Dot2CsvTimeStamp.Text = csv2BriefDetails.FirstTimeStamp + "μs";
-
-            pathsValid = CheckPaths(dotCsvPath1, dotCsvPath2); // check the if the paths are good enough
-            if (pathsValid)
+            try
             {
-                processedDotCsvPath = GenerateProcessedFilePath(dotCsvPath1, dotCsvPath2);
-                SaveCsvPath.Text = processedDotCsvPath;
-                ComputeAngles.IsEnabled = true; // enables the button
+                Dot2CsvTimeStamp.Text = "0"; // set the time stamp to 0 in case the button is pressed repeatedly
+                CsvTimeStampOffset.Text = "";   // set the offset time stamp to 0 in case the button is pressed repeatedly
+                csvDataTable2 = SetUpDataTable("2"); // preps the table so we can insert data into it in the next step
+                csv2BriefDetails = await BrowseAndLoadFilePath(LoadingCsv2ProgressBar, csvDataTable2); // file selection and parsing
+                dotCsvPath2 = csv2BriefDetails.FilePath; // to keep the global variable happy
+                Dot2CsvPath.Text = csv2BriefDetails.FilePath; // displays the file path on the UI
+                Dot2CsvTimeStamp.Text = csv2BriefDetails.FirstTimeStamp.ToString();
 
-                // calculate the time offset
-                CsvTimeStampOffset.Text = "Delta = " +
-                                          Math.Abs(csv1BriefDetails.FirstTimeStamp - csv2BriefDetails.FirstTimeStamp) + "μs";
+                pathsValid = CheckPaths(dotCsvPath1, dotCsvPath2); // check the if the paths are good enough
+                if (pathsValid)
+                {
+                    processedDotCsvPath = GenerateProcessedFilePath(dotCsvPath1, dotCsvPath2);
+                    SaveCsvPath.Text = processedDotCsvPath;
+                    ComputeAngles.IsEnabled = true; // enables the button
+
+                    // calculate the time offset
+                    CsvTimeStampOffset.Text = "Δt = " + Math.Abs(csv1BriefDetails.FirstTimeStamp - csv2BriefDetails.FirstTimeStamp);
+                }
+            }
+            catch (ArgumentNullException excptDetails)
+            {
+                NotifyUser(excptDetails.Message, ErrorTypes.Exception);
             }
         }
 
@@ -117,25 +131,21 @@ namespace XsensDOT_Offline_CSV_Processer
             BrowseLoadDot2Csv.IsEnabled = false;
 
             // Combine the tables
-            //csvDataTable2.Merge(csvDataTable1);
+            csvDataTable1.Merge(csvDataTable2, false, MissingSchemaAction.Add);
+            csvDataTable1.AcceptChanges();
 
             // Print the table
-            FillDataGrid(csvDataTable2, UIDataGrid);
-
-            DataRelation dtRelation;
-            DataColumn dot1TimeColumn = dataSet.Tables["XSENS_MEASUREMENT_DATA_CSV_DOT_1"].Columns[""];
-            //DataColumn dot2TimeColumn = dataSet.Tables["XSENS_MEASUREMENT_DATA_CSV_DOT_2"].Columns[""];
-            //DataColumn custCol = dtSet.Tables["Customers"].Columns[""];
-            //DataColumn orderCol = dtSet.Tables["orders"].Columns["custId"];
-            //dtRelation = new DataRelation("CustOrderRelation ", custCol, orderCol);
-            //dtSet.Tables["orders"].ParentRelations.Add(dtRelation);
-
-            //dtRelation = new DataRelation("XSENS_COMBINED_DATA", dot1TimeColumn, dot2TimeColumn);
-            //dataSet.Tables
+            FillDataGrid(csvDataTable1, UIDataGrid);
 
             // Parse through the table and compute the angles each
+            // Create a new row where we are going to put the calculated joint angles
+            csvDataTable1.Columns.Add(Header.JointAnglesDeg.ToString(), typeof(double));
+            csvDataTable1.AcceptChanges();
 
 
+            // Reenable the picker buttons.
+            BrowseLoadDot1Csv.IsEnabled = true;
+            BrowseLoadDot2Csv.IsEnabled = true;
 
         }
 
@@ -204,14 +214,14 @@ namespace XsensDOT_Offline_CSV_Processer
             // Unique Column & primary key column
             var dtColumn = new DataColumn();
             dtColumn.DataType = typeof(int);
-            dtColumn.ColumnName = Header.SampleTimeFine + identifier;
+            dtColumn.ColumnName = Header.SampleTimeFine.ToString(); // NO IDENTIFIER
             dtColumn.AutoIncrement = false;
             dtColumn.ReadOnly = true;
             dtColumn.Unique = true;
             csvDataTable.Columns.Add(dtColumn);
 
             // Workaround to create the unique primary key for this table
-            csvDataTable.PrimaryKey = new DataColumn[] {csvDataTable.Columns[Header.SampleTimeFine + identifier] };
+            csvDataTable.PrimaryKey = new DataColumn[] {csvDataTable.Columns[Header.SampleTimeFine.ToString()] }; // NO IDENTIFIER
 
             //csvDataTable.Columns.Add(Header.Quat_W + identifier, typeof(double));
             //csvDataTable.Columns.Add(Header.Quat_X + identifier, typeof(double));
@@ -375,6 +385,7 @@ namespace XsensDOT_Offline_CSV_Processer
                                 // Show updates on the progressbar
                                 SetProgressBarValue(progressBar, csvReader.BaseStream.Position * 100 / csvReader.BaseStream.Length);
                             }
+                            dataTable.AcceptChanges();
 
                             csvFeedbackDetails.NumberOfRows = rowCounter;
                             NotifyUser($"File parsing completed with {rowCounter} rows", ErrorTypes.Info);
