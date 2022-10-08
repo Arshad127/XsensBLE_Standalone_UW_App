@@ -135,6 +135,8 @@
     <Compile Include="Utilities\Calculator.cs" />
     <Compile Include="Utilities\CsvFileDetailsModel.cs" />
     <Compile Include="Utilities\CsvParse.cs" />
+    <Compile Include="Utilities\CsvWriter.cs" />
+    <Compile Include="Utilities\DisplaySupport.cs" />
     <Compile Include="Utilities\Enums.cs" />
   </ItemGroup>
   <ItemGroup>

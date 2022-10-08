@@ -75,6 +75,46 @@ namespace XsensDOT_Offline_CSV_Processer.Utilities
         /// </summary>
         public int NumberOfRows { get; set; }
 
+        /// <summary>
+        /// Manually input the device tag
+        /// </summary>
+        public string DeviceTag { get; set; }
+
+        /// <summary>
+        /// Manually input the firmware version
+        /// </summary>
+        public string FirmwareVersion { get; set; }
+
+        /// <summary>
+        /// Manually input the AppVersion
+        /// </summary>
+        public string AppVersion { get; set; }
+
+        /// <summary>
+        /// Manually input the SyncStatus
+        /// </summary>
+        public string SyncStatus { get; set; }
+
+        /// <summary>
+        /// Manually input the output rate
+        /// </summary>
+        public string OutputRate { get; set; }
+
+        /// <summary>
+        /// Manually input the filter profile
+        /// </summary>
+        public string FilterProfile { get; set; }
+
+        /// <summary>
+        /// Manually input the measurement mode
+        /// </summary>
+        public string MeasurementMode { get; set; }
+
+        /// <summary>
+        /// Manually input the recording start time
+        /// </summary>
+        public string StartTime { get; set; }
+
         private void GetAndCheckFileName(string filePath)
         {
             string[] tempSplitFileName = Path.GetFileNameWithoutExtension(filePath).Split("_");

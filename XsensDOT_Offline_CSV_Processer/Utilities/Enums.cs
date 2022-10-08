@@ -28,6 +28,14 @@ namespace XsensDOT_Offline_CSV_Processer.Utilities
         Status,
         Quat_Combined,
         FreeAcc_Combined,
-        JointAnglesDeg
+        JointAngle_X,
+        JointAngle_Y,
+        JointAngle_Z
+    }
+
+    public enum DeviceIdentifier
+    {
+        Hand,
+        Arm
     }
 }
