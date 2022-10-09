@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace XsensDOT_Offline_CSV_Processer.Utilities
+﻿namespace XsensDOT_Offline_CSV_Processer.Utilities
 {
     public enum ErrorTypes
     {

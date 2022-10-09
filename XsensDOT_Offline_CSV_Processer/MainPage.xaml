@@ -14,8 +14,9 @@
             <ColumnDefinition Width="20" />
             <ColumnDefinition Width="170"/>
             <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="130"/>
-            <ColumnDefinition Width="130"/>
+            <ColumnDefinition Width="120"/>
+            <ColumnDefinition Width="120"/>
+            <ColumnDefinition Width="120"/>
             <ColumnDefinition Width="20" />
         </Grid.ColumnDefinitions>
 
@@ -31,8 +32,9 @@
             <RowDefinition Height="20"/>
         </Grid.RowDefinitions>
 
-        <TextBox x:Name="LabelForTimeStamp" Grid.Row="1" Grid.Column="4" BorderThickness="0" Background="{x:Null}" Foreground="#FFEB6653" Margin="1" Text="Start Time (μs)" Padding="0" VerticalAlignment="Bottom" HorizontalAlignment="Center" Height="22" IsReadOnly="True"/>
-        <TextBox x:Name="LabelForDeviceTag" Grid.Row="1" Grid.Column="3" BorderThickness="0" Background="{x:Null}" Foreground="#FFEB6653" Margin="1" Text="Device Tag" Padding="0" VerticalAlignment="Bottom" HorizontalAlignment="Center" Height="22" IsReadOnly="True"/>
+        <TextBox x:Name="LabelForTimeStamp" Grid.Row="1" Grid.Column="5" BorderThickness="0" Background="{x:Null}" Foreground="#FFEB6653" Margin="1" Text="Start Time (μs)" Padding="0" VerticalAlignment="Bottom" HorizontalAlignment="Center" Height="22" IsReadOnly="True"/>
+        <TextBox x:Name="LabelForDeviceTag" Grid.Row="1" Grid.Column="4" BorderThickness="0" Background="{x:Null}" Foreground="#FFEB6653" Margin="1" Text="Device Tag" Padding="0" VerticalAlignment="Bottom" HorizontalAlignment="Center" Height="22" IsReadOnly="True"/>
+        <TextBox x:Name="LabelForSynced" Grid.Row="1" Grid.Column="3" BorderThickness="0" Background="{x:Null}" Foreground="#FFEB6653" Margin="1" Text="SyncStatus" Padding="0" VerticalAlignment="Bottom" HorizontalAlignment="Center" Height="22" IsReadOnly="True"/>
         <TextBox x:Name="LabelForCsvPaths" Grid.Row="1" Grid.Column="2" BorderThickness="0" Background="{x:Null}" Foreground="#FFEB6653" Margin="1" Text="CSV File Path" Padding="5,0,0,0" VerticalAlignment="Bottom" HorizontalAlignment="Left" Height="22" IsReadOnly="True"/>
 
         <Button x:Name="BrowseLoadDot1Csv" Grid.Row="2" Grid.Column="1" Content="Browse CSV 1 (HAND)" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="#FFEB6653" Foreground="Black" Click="BrowseLoadDot1Csv_Click" Margin="1"/>
@@ -42,31 +44,33 @@
 
 
 
-        <ProgressBar x:Name="LoadingCsv1ProgressBar" Grid.Row="2" Grid.Column="2" Grid.ColumnSpan="3" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Foreground="#FFEB6653" Background="Black" Margin="1"/>
-        <TextBox x:Name="Dot1CsvPath" Grid.Row="2" Grid.Column="2" HorizontalAlignment="Left" VerticalAlignment="Center" Padding="5" BorderThickness="0" Background="#00000000" Foreground="White" IsReadOnly="True" Margin="1"/>
-        <TextBox x:Name="Dot1DeviceTag" Grid.Row="2" Grid.Column="3" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="5" BorderThickness="0" Background="#00000000" Foreground="White" IsReadOnly="True" Margin="1"/>
-        <TextBox x:Name="Dot1CsvTimeStamp" Grid.Row="2" Grid.Column="4" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="5" BorderThickness="0" Background="#00000000" Foreground="White" IsReadOnly="True" Margin="1"/>
+        <ProgressBar x:Name="LoadingCsv1ProgressBar" Grid.Row="2" Grid.Column="2" Grid.ColumnSpan="4" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Foreground="#FFEB6653" Background="Black" Margin="1"/>
+        <TextBox x:Name="Dot1CsvPath" Grid.Row="2" Grid.Column="2" HorizontalAlignment="Left" VerticalAlignment="Center" Padding="5" BorderThickness="0" Background="#00000000" Foreground="White" IsReadOnly="True" Margin="1" />
+        <TextBox x:Name="Dot1SyncStatus" Grid.Row="2" Grid.Column="3" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="10" BorderThickness="0" Background="#00000000" Foreground="White" IsReadOnly="True" Margin="1"/>
+        <TextBox x:Name="Dot1DeviceTag" Grid.Row="2" Grid.Column="4" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="10" BorderThickness="0" Background="#00000000" Foreground="White" IsReadOnly="True" Margin="1"/>
+        <TextBox x:Name="Dot1CsvTimeStamp" Grid.Row="2" Grid.Column="5" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="5" BorderThickness="0" Background="#00000000" Foreground="White" IsReadOnly="True" Margin="1"/>
 
-        <ProgressBar x:Name="LoadingCsv2ProgressBar" Grid.Row="3" Grid.Column="2" Grid.ColumnSpan="3" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Foreground="#FFEB6653" Background="Black" Margin="1"/>
+        <ProgressBar x:Name="LoadingCsv2ProgressBar" Grid.Row="3" Grid.Column="2" Grid.ColumnSpan="4" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Foreground="#FFEB6653" Background="Black" Margin="1"/>
         <TextBox x:Name="Dot2CsvPath" Grid.Row="3" Grid.Column="2" HorizontalAlignment="Left" VerticalAlignment="Center" Padding="5" BorderThickness="0" Background="#00000000" Foreground="White" IsReadOnly="True" Margin="1"/>
-        <TextBox x:Name="Dot2DeviceTag" Grid.Row="3" Grid.Column="3" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="5" BorderThickness="0" Background="#00000000" Foreground="White" IsReadOnly="True" Margin="1"/>
-        <TextBox x:Name="Dot2CsvTimeStamp" Grid.Row="3" Grid.Column="4" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="5" BorderThickness="0" Background="#00000000" Foreground="White" IsReadOnly="True" Margin="1"/>
+        <TextBox x:Name="Dot2SyncStatus" Grid.Row="3" Grid.Column="3" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="10" BorderThickness="0" Background="#00000000" Foreground="White" IsReadOnly="True" Margin="1"/>
+        <TextBox x:Name="Dot2DeviceTag" Grid.Row="3" Grid.Column="4" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="10" BorderThickness="0" Background="#00000000" Foreground="White" IsReadOnly="True" Margin="1"/>
+        <TextBox x:Name="Dot2CsvTimeStamp" Grid.Row="3" Grid.Column="5" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="5" BorderThickness="0" Background="#00000000" Foreground="White" IsReadOnly="True" Margin="1"/>
 
 
-        <ProgressBar x:Name="LoadingProgressBar" Grid.Row="4" Grid.Column="2" Grid.ColumnSpan="3" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Foreground="#FFEB6653" Background="Black" Margin="1"/>
+        <ProgressBar x:Name="ComputingProgressBar" Grid.Row="4" Grid.Column="2" Grid.ColumnSpan="4" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Foreground="#FFEB6653" Background="Black" Margin="1"/>
 
-        <ProgressBar x:Name="SaveFileProgressBar" Grid.Row="6" Grid.Column="2" Grid.ColumnSpan="3" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Foreground="#FFEB6653" Background="Black" Margin="1"/>
-        <TextBox x:Name="SaveCsvPath" Grid.Row="6" Grid.Column="2" Grid.ColumnSpan="3" HorizontalAlignment="Left" VerticalAlignment="Center" Padding="5" BorderThickness="0" Background="#00000000" Foreground="White" Margin="1" IsReadOnly="True"/>
-        <TextBox x:Name="MessageBox" Grid.Row="7" Grid.Column="1" Grid.ColumnSpan="4" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Padding="5" BorderThickness="0" Foreground="White"  TextWrapping="Wrap" Margin="1"/>
-
-
-
-        <TextBox x:Name="CsvTimeStampOffset" Grid.Row="4" Grid.Column="4" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="5" BorderThickness="0" Background="#00000000" Foreground="White" IsReadOnly="True" Margin="1"/>
+        <ProgressBar x:Name="SaveFileProgressBar" Grid.Row="6" Grid.Column="2" Grid.ColumnSpan="4" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Foreground="#FFEB6653" Background="Black" Margin="1"/>
+        <TextBox x:Name="SaveCsvPath" Grid.Row="6" Grid.Column="2" Grid.ColumnSpan="4" HorizontalAlignment="Left" VerticalAlignment="Center" Padding="5" BorderThickness="0" Background="#00000000" Foreground="White" Margin="1" IsReadOnly="True"/>
+        <TextBox x:Name="MessageBox" Grid.Row="7" Grid.Column="1" Grid.ColumnSpan="5" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Padding="5" BorderThickness="0" Foreground="White"  TextWrapping="Wrap" Margin="1" IsReadOnly="True"/>
 
 
 
+        <TextBox x:Name="CsvTimeStampOffset" Grid.Row="4" Grid.Column="5" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="5" BorderThickness="0" Background="#00000000" Foreground="White" IsReadOnly="True" Margin="1"/>
 
-        <Custom:DataGrid x:Name="UIDataGrid" Grid.Row="5" Grid.Column="1" Grid.ColumnSpan="4" AutoGenerateColumns="False" Margin="1" IsReadOnly="True" FontSize="8"/>
+
+
+
+        <Custom:DataGrid x:Name="UIDataGrid" Grid.Row="5" Grid.Column="1" Grid.ColumnSpan="5" AutoGenerateColumns="False" Margin="1" IsReadOnly="True" FontSize="8"/>
 
 
     </Grid>

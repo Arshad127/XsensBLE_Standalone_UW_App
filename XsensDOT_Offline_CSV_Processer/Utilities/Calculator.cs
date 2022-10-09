@@ -1,9 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Numerics;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace XsensDOT_Offline_CSV_Processer.Utilities
 {
@@ -72,45 +68,51 @@ namespace XsensDOT_Offline_CSV_Processer.Utilities
         /// </summary>
         public static Vector3 ConvertQuaternionToDegreesEuler(Quaternion q)
         {
-            Vector3 angleInRad = new Vector3();
-            Vector3 angleInDeg = new Vector3();
-
-            // roll / x
+           // roll / x
             double sinr_cosp = 2 * (q.W * q.X + q.Y * q.Z);
             double cosr_cosp = 1 - 2 * (q.X * q.X + q.Y * q.Y);
-            angleInRad.X = (float)Math.Atan2(sinr_cosp, cosr_cosp);
+            double angleX = Math.Atan2(sinr_cosp, cosr_cosp);
 
             // pitch / y
+            double angleY;
             double sinp = 2 * (q.W * q.Y - q.Z * q.X);
             if (Math.Abs(sinp) >= 1)
             {
                 if (sinp >= 0) // positive
                 {
-                    angleInRad.Y = (float)Math.PI / 2;
+                    angleY = Math.PI / 2;
                 }
                 else // she negative
                 {
-                    angleInRad.Y = -(float)Math.PI / 2;
+                    angleY = -Math.PI / 2;
                 }
             }
             else
             {
-                angleInRad.Y = (float)Math.Asin(sinp);
+                angleY = Math.Asin(sinp);
             }
 
             // yaw / z
             double siny_cosp = 2 * (q.W * q.Z + q.X * q.Y);
             double cosy_cosp = 1 - 2 * (q.Y * q.Y + q.Z * q.Z);
-            angleInRad.Z = (float)Math.Atan2(siny_cosp, cosy_cosp);
+            double angleZ = Math.Atan2(siny_cosp, cosy_cosp);
 
             // Convert to degrees
-            angleInDeg.X = 180.0f / (float)Math.PI * angleInRad.X;
-            angleInDeg.Y = 180.0f / (float)Math.PI * angleInRad.Y;
-            angleInDeg.Z = 180.0f / (float)Math.PI * angleInRad.Z;
+            angleX = 180.0 / Math.PI * angleX;
+            angleY = 180.0f / Math.PI * angleY;
+            angleZ = 180.0f / (float)Math.PI * angleZ;
 
-            return angleInDeg;
+            // roundup the values
+            angleX = Math.Round(angleX, 6);
+            angleY = Math.Round(angleY, 6);
+            angleZ = Math.Round(angleZ, 6);
+
+            return new Vector3((float)angleX, (float)angleY, (float)angleZ);
         }
 
 
+
     }
+
+
 }

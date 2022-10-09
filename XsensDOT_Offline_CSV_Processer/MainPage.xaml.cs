@@ -1,36 +1,21 @@
-﻿using Microsoft.Toolkit.Uwp.UI.Controls;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Data;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
-using System.Linq;
 using System.Numerics;
-using System.Runtime.InteropServices.WindowsRuntime;
-using System.Security;
-using System.Threading;
 using System.Threading.Tasks;
-using Windows.Foundation;
-using Windows.Foundation.Collections;
 using Windows.Storage;
 using Windows.Storage.Pickers;
-using Windows.Storage.Streams;
 using Windows.UI.Core;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Controls.Primitives;
-using Windows.UI.Xaml.Data;
-using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media;
-using Windows.UI.Xaml.Media.Imaging;
-using Windows.UI.Xaml.Navigation;
 using XsensDOT_Offline_CSV_Processer.Utilities;
 using IOException = System.IO.IOException;
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
-
 namespace XsensDOT_Offline_CSV_Processer
 {
     /// <summary>
@@ -38,27 +23,29 @@ namespace XsensDOT_Offline_CSV_Processer
     /// </summary>
     public sealed partial class MainPage : Page
     {
-        private string dotCsvPath1 = null;
-        private string dotCsvPath2 = null;
+        private string _dotCsvPath1 = null;
+        private string _dotCsvPath2 = null;
 
-        private bool pathsValid = false;
-        private string processedDotCsvPath = null;
-        private FileOpenPicker openPicker = null;
+        private bool _pathsValid = false;
+        private string _processedDotCsvPath = null;
 
-        private DataTable csvDataTable1, csvDataTable2, combinedCsvDataTable;
-        private DataSet dataSet;
-        private string consoleMessageThread = "";
+        private DataTable _csvDataTable1, _csvDataTable2, _combinedCsvDataTable;
+        private DataSet _dataSet;
+        private string _consoleMessageThread = "";
 
-        private CsvFileDetailsModel csv1BriefDetails;
-        private CsvFileDetailsModel csv2BriefDetails;
+        private CsvFileDetailsModel _csv1BriefDetails;
+        private CsvFileDetailsModel _csv2BriefDetails;
 
-        private readonly string MEASUREMENT_MODE = "Sensor fusion Mode - Extended (Quaternion)";
+        private readonly string _MEASUREMENT_MODE = "Sensor fusion Mode - Extended (Quaternion)";
+        private readonly bool _TRIM_DATA = false;
 
         public MainPage()
         {
             this.InitializeComponent();
             ComputeAngles.IsEnabled = false;
             SaveCsvFiles.IsEnabled = false;
+            Dot1CsvPath.PlaceholderText = $"File must be recorded with {_MEASUREMENT_MODE}";
+            Dot2CsvPath.PlaceholderText = $"File must be recorded with {_MEASUREMENT_MODE}";
         }
 
         /// <summary>
@@ -71,25 +58,27 @@ namespace XsensDOT_Offline_CSV_Processer
                 Dot1CsvTimeStamp.Text = "";     // set the time stamp to 0 in case the button is pressed repeatedly
                 CsvTimeStampOffset.Text = "";   // set the offset time stamp to 0 in case the button is pressed repeatedly
                 Dot1DeviceTag.Text = "";
+                Dot1SyncStatus.Text = "";
 
-                csvDataTable1 = SetUpDataTable("1"); // preps the table so we can insert data into it in the next step
-                csv1BriefDetails = await BrowseAndLoadFilePath(LoadingCsv1ProgressBar, csvDataTable1); // file selection and parsing
+                _csvDataTable1 = SetUpInputDataTable("1"); // preps the table so we can insert data into it in the next step
+                _csv1BriefDetails = await BrowseAndLoadFilePath(LoadingCsv1ProgressBar, _csvDataTable1); // file selection and parsing
 
                 // Update the UI details
-                dotCsvPath1 = csv1BriefDetails.FilePath; // to keep the global variable happy
-                Dot1CsvPath.Text = csv1BriefDetails.FilePath; // displays the file path on the UI
-                Dot1CsvTimeStamp.Text = csv1BriefDetails.FirstTimeStamp.ToString();
-                Dot1DeviceTag.Text = csv1BriefDetails.DeviceTag;
+                _dotCsvPath1 = _csv1BriefDetails.FilePath; // to keep the global variable happy
+                Dot1CsvPath.Text = _csv1BriefDetails.FilePath; // displays the file path on the UI
+                Dot1CsvTimeStamp.Text = _csv1BriefDetails.FirstTimeStamp.ToString();
+                Dot1DeviceTag.Text = _csv1BriefDetails.DeviceTag;
+                Dot1SyncStatus.Text = _csv1BriefDetails.SyncStatus;
 
-                pathsValid = CheckPaths(dotCsvPath1, dotCsvPath2); // check the if the paths are good enough
-                if (pathsValid)
+                _pathsValid = CheckPaths(_dotCsvPath1, _dotCsvPath2); // check the if the paths are good enough
+                if (_pathsValid)
                 {
-                    processedDotCsvPath = GenerateProcessedFilePath(dotCsvPath1, dotCsvPath2);
-                    SaveCsvPath.Text = processedDotCsvPath;
+                    _processedDotCsvPath = GenerateProcessedFilePath(_dotCsvPath1, _dotCsvPath2);
+                    SaveCsvPath.Text = _processedDotCsvPath;
                     ComputeAngles.IsEnabled = true; // enables the button
 
                     // calculate the time offset
-                    CsvTimeStampOffset.Text = "Δt = " + Math.Abs(csv1BriefDetails.FirstTimeStamp - csv2BriefDetails.FirstTimeStamp);
+                    CsvTimeStampOffset.Text = "Δt = " + Math.Abs(_csv1BriefDetails.FirstTimeStamp - _csv2BriefDetails.FirstTimeStamp);
                 }
             }
             catch (ArgumentNullException excptDetails)
@@ -108,25 +97,27 @@ namespace XsensDOT_Offline_CSV_Processer
                 Dot2CsvTimeStamp.Text = ""; // set the time stamp to 0 in case the button is pressed repeatedly
                 CsvTimeStampOffset.Text = "";   // set the offset time stamp to 0 in case the button is pressed repeatedly
                 Dot2DeviceTag.Text = "";
+                Dot2SyncStatus.Text = "";
 
-                csvDataTable2 = SetUpDataTable("2"); // preps the table so we can insert data into it in the next step
-                csv2BriefDetails = await BrowseAndLoadFilePath(LoadingCsv2ProgressBar, csvDataTable2); // file selection and parsing
+                _csvDataTable2 = SetUpInputDataTable("2"); // preps the table so we can insert data into it in the next step
+                _csv2BriefDetails = await BrowseAndLoadFilePath(LoadingCsv2ProgressBar, _csvDataTable2); // file selection and parsing
 
                 // Update the UI details
-                dotCsvPath2 = csv2BriefDetails.FilePath; // to keep the global variable happy
-                Dot2CsvPath.Text = csv2BriefDetails.FilePath; // displays the file path on the UI
-                Dot2CsvTimeStamp.Text = csv2BriefDetails.FirstTimeStamp.ToString();
-                Dot2DeviceTag.Text = csv2BriefDetails.DeviceTag;
+                _dotCsvPath2 = _csv2BriefDetails.FilePath; // to keep the global variable happy
+                Dot2CsvPath.Text = _csv2BriefDetails.FilePath; // displays the file path on the UI
+                Dot2CsvTimeStamp.Text = _csv2BriefDetails.FirstTimeStamp.ToString();
+                Dot2DeviceTag.Text = _csv2BriefDetails.DeviceTag;
+                Dot2SyncStatus.Text = _csv2BriefDetails.SyncStatus;
 
-                pathsValid = CheckPaths(dotCsvPath1, dotCsvPath2); // check the if the paths are good enough
-                if (pathsValid)
+                _pathsValid = CheckPaths(_dotCsvPath1, _dotCsvPath2); // check the if the paths are good enough
+                if (_pathsValid)
                 {
-                    processedDotCsvPath = GenerateProcessedFilePath(dotCsvPath1, dotCsvPath2);
-                    SaveCsvPath.Text = processedDotCsvPath;
+                    _processedDotCsvPath = GenerateProcessedFilePath(_dotCsvPath1, _dotCsvPath2);
+                    SaveCsvPath.Text = _processedDotCsvPath;
                     ComputeAngles.IsEnabled = true; // enables the button
 
                     // calculate the time offset
-                    CsvTimeStampOffset.Text = "Δt = " + Math.Abs(csv1BriefDetails.FirstTimeStamp - csv2BriefDetails.FirstTimeStamp);
+                    CsvTimeStampOffset.Text = "Δt = " + Math.Abs(_csv1BriefDetails.FirstTimeStamp - _csv2BriefDetails.FirstTimeStamp);
                 }
             }
             catch (ArgumentNullException excptDetails)
@@ -138,7 +129,7 @@ namespace XsensDOT_Offline_CSV_Processer
         /// <summary>
         /// Calculate the joint angles for each quaternion pair in the tables
         /// </summary>
-        private void ComputeAngles_Click(object sender, RoutedEventArgs e)
+        private async void ComputeAngles_Click(object sender, RoutedEventArgs e)
         {
             // Disable the picker buttons.
             // It'll be messy if source files are changing while processing
@@ -146,54 +137,14 @@ namespace XsensDOT_Offline_CSV_Processer
             BrowseLoadDot2Csv.IsEnabled = false;
             ComputeAngles.IsEnabled = false;
 
-            // Combine the tables
-            csvDataTable1.Merge(csvDataTable2, false, MissingSchemaAction.Add);
-
-            // Parse through the table and compute the angles each
-            // Create a new row where we are going to put the calculated joint angles
-            // #### WHAT HAPPENS IF THE BUTTON IS PRESSED AGAIN? EXCEPTION!! FIX
-            csvDataTable1.Columns.Add(Header.JointAngle_X.ToString(), typeof(double));
-            csvDataTable1.Columns.Add(Header.JointAngle_Y.ToString(), typeof(double));
-            csvDataTable1.Columns.Add(Header.JointAngle_Z.ToString(), typeof(double));
-            csvDataTable1.AcceptChanges();
-
-            Quaternion q1 = Quaternion.Identity;
-            Quaternion q2 = Quaternion.Identity;
-            Vector3 jointAngle;
-
-            foreach (DataRow row in csvDataTable1.Rows)
+            // Here's where the computation sits
+            await Task.Run(() =>
             {
-                try
-                {
-                    q1.W = (float) (double) row[Header.Quat_W + "1"];
-                    q1.X = (float) (double) row[Header.Quat_X + "1"];
-                    q1.Y = (float) (double) row[Header.Quat_Y + "1"];
-                    q1.Z = (float) (double) row[Header.Quat_Z + "1"];
-
-                    q2.W = (float) (double) row[Header.Quat_W + "2"];
-                    q2.X = (float) (double) row[Header.Quat_X + "2"];
-                    q2.Y = (float) (double) row[Header.Quat_Y + "2"];
-                    q2.Z = (float) (double) row[Header.Quat_Z + "2"];
-
-                    jointAngle = Calculator.ComputeJointAngle(q1, q2);
-
-                    row[Header.JointAngle_X.ToString()] = jointAngle.X;
-                    row[Header.JointAngle_Y.ToString()] = jointAngle.Y;
-                    row[Header.JointAngle_Z.ToString()] = jointAngle.Z;
-                }
-                catch (InvalidCastException excptCastException)
-                {
-                    // #### WORK ON TRIMMING THE TABLE BEFORE THE ITERATION?
-                    // #### OR CREATE A NEW TABLE AND TRANSFER EVERYTHING AND DO THE MATHS AT THE SAME TIME?
-                    Debug.WriteLine($"[EXCEPTION] {excptCastException.Message}");
-                }
-            }
-
-            csvDataTable1.AcceptChanges();
-
+                _combinedCsvDataTable = JointCalculatorInTable(_csvDataTable1, _csvDataTable2, ComputingProgressBar);
+            });
 
             // Print the table
-            DisplaySupport.FillDataGrid(csvDataTable1, UIDataGrid);
+            DisplaySupport.FillDataGrid(_combinedCsvDataTable, UIDataGrid);
 
             // Reenable the picker buttons + the save file
             BrowseLoadDot1Csv.IsEnabled = true;
@@ -204,6 +155,101 @@ namespace XsensDOT_Offline_CSV_Processer
             NotifyUser("Computations complete", ErrorTypes.Info);
         }
 
+        /// <summary>
+        /// Parse the fed DataTables for the Sensor 1 and Sensor 2, merges the tables using the time stamp as 
+        /// primary key (anchor), trims the rows with empty elements, add the joint angle rows, computes the
+        /// joint angles and adds the values to the combined DataTable which is returned.
+        /// </summary>
+        private DataTable JointCalculatorInTable(DataTable dataTableDOT1, DataTable dataTableDOT2, ProgressBar progressBar)
+        {
+            // Combine the tables
+            DataTable dataTableCombined = dataTableDOT1.Copy();
+            dataTableCombined.TableName = "XSENS_MEASUREMENT_DATA_CSV_DOTS_COMBINED";
+            dataTableCombined.Merge(dataTableDOT2.Copy(), false, MissingSchemaAction.Add);
+            dataTableCombined.AcceptChanges();
+
+            // Trim the table to remove incomplete rows
+            // Snippet from https://stackoverflow.com/questions/5648339/deleting-specific-rows-from-datatable
+            if (_TRIM_DATA)
+            {
+                foreach (DataRow row in dataTableCombined.Rows)
+                {
+                    // conditions needs to be more complete
+                    if (row[Header.Quat_W + "1"] == DBNull.Value || row[Header.Quat_W + "2"] == DBNull.Value)
+                    {
+                        row.Delete(); // ear-marks the row to be deleted
+                    }
+                }
+                dataTableCombined.AcceptChanges(); // confirm the deletions
+            }
+
+
+            // Parse through the table and compute the angles each
+            // Create a new row where we are going to put the calculated joint angles
+            dataTableCombined.Columns.Add(Header.JointAngle_X.ToString(), typeof(double));
+            dataTableCombined.Columns.Add(Header.JointAngle_Y.ToString(), typeof(double));
+            dataTableCombined.Columns.Add(Header.JointAngle_Z.ToString(), typeof(double));
+            dataTableCombined.AcceptChanges();
+
+            Quaternion q1 = Quaternion.Identity;
+            Quaternion q2 = Quaternion.Identity;
+            Vector3 jointAngle;
+            int numRows = dataTableCombined.Rows.Count;
+            int counter = 0;
+
+            // Iterating through the table to compute the joint angles
+            foreach (DataRow row in dataTableCombined.Rows)
+            {
+                try
+                {
+                    // Check if there are corresponding information in both tables to compute the joint angle
+                    // else the angle columns are left as DBNull (ie., empty)
+                    // IF condition needs to be more complete
+                    if (row[Header.Quat_W + "1"] == DBNull.Value || row[Header.Quat_W + "2"] == DBNull.Value)
+                    {
+                        row[Header.JointAngle_X.ToString()] = DBNull.Value;
+                        row[Header.JointAngle_Y.ToString()] = DBNull.Value;
+                        row[Header.JointAngle_Z.ToString()] = DBNull.Value;
+                    }
+                    else
+                    {
+                        q1.W = (float)(double)row[Header.Quat_W + "1"];
+                        q1.X = (float)(double)row[Header.Quat_X + "1"];
+                        q1.Y = (float)(double)row[Header.Quat_Y + "1"];
+                        q1.Z = (float)(double)row[Header.Quat_Z + "1"];
+
+                        q2.W = (float)(double)row[Header.Quat_W + "2"];
+                        q2.X = (float)(double)row[Header.Quat_X + "2"];
+                        q2.Y = (float)(double)row[Header.Quat_Y + "2"];
+                        q2.Z = (float)(double)row[Header.Quat_Z + "2"];
+
+                        jointAngle = Calculator.ComputeJointAngle(q1, q2);
+
+                        row[Header.JointAngle_X.ToString()] = jointAngle.X;
+                        row[Header.JointAngle_Y.ToString()] = jointAngle.Y;
+                        row[Header.JointAngle_Z.ToString()] = jointAngle.Z;
+                    }
+                }
+                catch (InvalidCastException excptCastException)
+                {
+                    Debug.WriteLine($"[EXCEPTION] {excptCastException.Message}");
+                }
+                finally
+                {
+                    // Update the progress bar for visual indication of the save process
+                    counter++;
+                    SetProgressBarValue(progressBar, counter * 100.0 / numRows);
+                }
+            }
+
+            dataTableCombined.AcceptChanges(); // confirm the new data added
+
+            return dataTableCombined;
+        }
+
+        /// <summary>
+        /// Async Method to save files as CSV using the FileSavePicker dialog
+        /// </summary>
         private async Task saveCsvFilesAsync(DataTable dataTable, string suggestedSavePath, ProgressBar progressBar, CsvFileDetailsModel dot1CsvDetails, CsvFileDetailsModel dot2CsvDetails)
         {
             SetProgressBarValue(progressBar, 0);
@@ -245,6 +291,7 @@ namespace XsensDOT_Offline_CSV_Processer
                             await streamWriter.WriteLineAsync($"FilterProfile,{dot1CsvDetails.FilterProfile},{dot2CsvDetails.FilterProfile}");
                             await streamWriter.WriteLineAsync($"MeasurementMode,{dot1CsvDetails.MeasurementMode},{dot2CsvDetails.MeasurementMode}");
                             await streamWriter.WriteLineAsync($"StartTime,{dot1CsvDetails.StartTime},{dot2CsvDetails.StartTime}");
+                            await streamWriter.WriteLineAsync();
 
                             // Writing headings into the CSV using the writer
                             tempLine = Header.SampleTimeFine + "," +
@@ -306,10 +353,12 @@ namespace XsensDOT_Offline_CSV_Processer
         /// </summary>
         private async void SaveCsvFiles_Click(object sender, RoutedEventArgs e)
         {
-            await saveCsvFilesAsync(csvDataTable1, SaveCsvPath.Text, SaveFileProgressBar, csv1BriefDetails,
-                    csv2BriefDetails);
+            await saveCsvFilesAsync(_combinedCsvDataTable, SaveCsvPath.Text, SaveFileProgressBar, _csv1BriefDetails, _csv2BriefDetails);
         }
 
+        /// <summary>
+        /// Method to set the value of a progress bar
+        /// </summary>
         private void SetProgressBarValue(ProgressBar progressBar, double progressValue)
         {
             if (Dispatcher.HasThreadAccess)
@@ -325,21 +374,21 @@ namespace XsensDOT_Offline_CSV_Processer
         /// <summary>
         /// Create the tables skeleton for storing the data from the csv files
         /// </summary>
-        private DataTable SetUpDataTable(string identifier)
+        private DataTable SetUpInputDataTable(string identifier)
         {
             string tableName = "XSENS_MEASUREMENT_DATA_CSV_DOT_" + identifier;
 
             // need to check for duplicate tables in the dataset.
             // be weary of the race conditions given there is only one dataset being access by two tables
             // ****CHECK RACE CONDITIONS*****
-            if (dataSet == null)
+            if (_dataSet == null)
             {
-                dataSet = new DataSet();
+                _dataSet = new DataSet();
             }
-            else if (dataSet.Tables.Contains(tableName))
+            else if (_dataSet.Tables.Contains(tableName))
             {
                 // remove duplicate tables else problemo
-                dataSet.Tables.Remove(tableName);
+                _dataSet.Tables.Remove(tableName);
             }
 
             DataTable csvDataTable = new DataTable(tableName);
@@ -349,7 +398,7 @@ namespace XsensDOT_Offline_CSV_Processer
 
             // Unique Column & primary key column
             var dtColumn = new DataColumn();
-            dtColumn.DataType = typeof(int);
+            dtColumn.DataType = typeof(long);
             dtColumn.ColumnName = Header.SampleTimeFine.ToString(); // NO IDENTIFIER
             dtColumn.AutoIncrement = false;
             dtColumn.ReadOnly = true;
@@ -367,11 +416,11 @@ namespace XsensDOT_Offline_CSV_Processer
             //csvDataTable.Columns.Add(Header.FreeAcc_Y + identifier, typeof(double));
             //csvDataTable.Columns.Add(Header.FreeAcc_Z + identifier, typeof(double));
             //csvDataTable.Columns.Add(Header.Status + identifier, typeof(int));
-            //csvDataTable.Columns.Add(Header.Quat_Combined + identifier, typeof(Quaternion));
-            //csvDataTable.Columns.Add(Header.FreeAcc_Combined + identifier, typeof(Vector3));
+
+
 
             // add the table to the dataset
-            dataSet.Tables.Add(csvDataTable);
+            _dataSet.Tables.Add(csvDataTable);
 
             return csvDataTable;
         }
@@ -445,6 +494,9 @@ namespace XsensDOT_Offline_CSV_Processer
             return outputPath;
         }
 
+        /// <summary>
+        /// Async method to pick the initial csv and parse into a datatable
+        /// </summary>
         private async Task<CsvFileDetailsModel> BrowseAndLoadFilePath(ProgressBar progressBar, DataTable dataTable)
         {
             string filePath = "";
@@ -452,7 +504,7 @@ namespace XsensDOT_Offline_CSV_Processer
 
             try
             {
-                openPicker = new FileOpenPicker
+                FileOpenPicker openPicker = new FileOpenPicker
                 {
                     ViewMode = PickerViewMode.List,
                     SuggestedStartLocation = PickerLocationId.Downloads
@@ -511,8 +563,7 @@ namespace XsensDOT_Offline_CSV_Processer
                                             //freeAcc_Y,
                                             //freeAcc_Z,
                                             //status,
-                                            //new Quaternion((float)quat_X, (float)quat_Y, (float)quat_Z, (float)quat_W),
-                                            //new Vector3((float)freeAcc_X, (float)freeAcc_Y, (float)freeAcc_Z)
+
                                         });
 
                                         // first time stamp gets printed on the UI for indication of whether or not data is synced
@@ -554,10 +605,10 @@ namespace XsensDOT_Offline_CSV_Processer
 
                                             case "Measurement Mode:":
                                                 csvFeedbackDetails.MeasurementMode = extractedRow[1];
-                                                if (!extractedRow[1].Equals(MEASUREMENT_MODE))
+                                                if (!extractedRow[1].Equals(_MEASUREMENT_MODE))
                                                 {
                                                     throw new FileLoadException(
-                                                        $"Attempting to load file with an incompatible measurement mode loaded. Application expects '{MEASUREMENT_MODE}'");
+                                                        $"Attempting to load file with an incompatible measurement mode loaded. Application expects '{_MEASUREMENT_MODE}'");
                                                 }
 
                                                 break;
@@ -602,10 +653,6 @@ namespace XsensDOT_Offline_CSV_Processer
             {
                 NotifyUser(e.Message, ErrorTypes.Exception);
             }
-            finally
-            {
-                openPicker = null;
-            }
 
             return csvFeedbackDetails;
         }
@@ -632,28 +679,28 @@ namespace XsensDOT_Offline_CSV_Processer
                 case ErrorTypes.Info:
                     MessageBox.Foreground = new SolidColorBrush(Windows.UI.Colors.Black);
                     MessageBox.Background = new SolidColorBrush(Windows.UI.Colors.GreenYellow);
-                    consoleMessageThread = "[INFO] " + strMessage + "\n" + consoleMessageThread;
+                    _consoleMessageThread = "[INFO] " + strMessage + "\n" + _consoleMessageThread;
                     break;
 
                 case ErrorTypes.Warning:
                     MessageBox.Foreground = new SolidColorBrush(Windows.UI.Colors.Black);
                     MessageBox.Background = new SolidColorBrush(Windows.UI.Colors.Yellow);
-                    consoleMessageThread = "[WARNING] " + strMessage + "\n" + consoleMessageThread;
+                    _consoleMessageThread = "[WARNING] " + strMessage + "\n" + _consoleMessageThread;
                     break;
 
                 case ErrorTypes.Error:
                     MessageBox.Foreground = new SolidColorBrush(Windows.UI.Colors.Black);
                     MessageBox.Background = new SolidColorBrush(Windows.UI.Colors.Red);
-                    consoleMessageThread = "[ERROR] " + strMessage + "\n" + consoleMessageThread;
+                    _consoleMessageThread = "[ERROR] " + strMessage + "\n" + _consoleMessageThread;
                     break;
 
                 case ErrorTypes.Exception:
                     MessageBox.Foreground = new SolidColorBrush(Windows.UI.Colors.Black);
                     MessageBox.Background = new SolidColorBrush(Windows.UI.Colors.Red);
-                    consoleMessageThread = "[EXCEPTION] " + strMessage + "\n" + consoleMessageThread;
+                    _consoleMessageThread = "[EXCEPTION] " + strMessage + "\n" + _consoleMessageThread;
                     break;
             }
-            MessageBox.Text = consoleMessageThread;
+            MessageBox.Text = _consoleMessageThread;
         }
     }
 
