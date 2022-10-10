@@ -18,6 +18,8 @@ namespace XsensDOT_Offline_CSV_Processer.Utilities
             deltaQuaternion = quat1 * Quaternion.Inverse(quat2);
             eulerAngles = ConvertQuaternionToDegreesEuler(deltaQuaternion);
 
+            
+
             if (eulerAngles.X > 180) { eulerAngles.X -= 360.0f; }
             if (eulerAngles.Y > 180) { eulerAngles.Y -= 360.0f; }
             if (eulerAngles.Z > 180) { eulerAngles.Z -= 360.0f; }

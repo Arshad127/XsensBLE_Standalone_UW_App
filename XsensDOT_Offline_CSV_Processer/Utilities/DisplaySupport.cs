@@ -31,6 +31,7 @@ namespace XsensDOT_Offline_CSV_Processer.Utilities
             }
 
             grid.ItemsSource = collection;
+            
         }
     }
 }

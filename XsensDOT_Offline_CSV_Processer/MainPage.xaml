@@ -28,7 +28,7 @@
             <RowDefinition Height="40"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="50"/>
-            <RowDefinition Height="66"/>
+            <RowDefinition Height="120"/>
             <RowDefinition Height="20"/>
         </Grid.RowDefinitions>
 
@@ -61,7 +61,7 @@
 
         <ProgressBar x:Name="SaveFileProgressBar" Grid.Row="6" Grid.Column="2" Grid.ColumnSpan="4" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Foreground="#FFEB6653" Background="Black" Margin="1"/>
         <TextBox x:Name="SaveCsvPath" Grid.Row="6" Grid.Column="2" Grid.ColumnSpan="4" HorizontalAlignment="Left" VerticalAlignment="Center" Padding="5" BorderThickness="0" Background="#00000000" Foreground="White" Margin="1" IsReadOnly="True"/>
-        <TextBox x:Name="MessageBox" Grid.Row="7" Grid.Column="1" Grid.ColumnSpan="5" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Padding="5" BorderThickness="0" Foreground="White"  TextWrapping="Wrap" Margin="1" IsReadOnly="True"/>
+        <TextBox x:Name="MessageBox" Grid.Row="7" Grid.Column="1" Grid.ColumnSpan="4" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Padding="5" BorderThickness="0" Foreground="White"  TextWrapping="Wrap" Margin="1" IsReadOnly="True"/>
 
 
 
@@ -71,6 +71,9 @@
 
 
         <Custom:DataGrid x:Name="UIDataGrid" Grid.Row="5" Grid.Column="1" Grid.ColumnSpan="5" AutoGenerateColumns="False" Margin="1" IsReadOnly="True" FontSize="8"/>
+        <Image Source ="Assets/Xsens Full Logo.png" Grid.Row="1" Grid.Column="1" Margin="1" />
+        <TextBox Grid.Row="7" Grid.Column="5" Margin="1" Background="White" IsReadOnly="True" BorderThickness="0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
+        <Image Source ="Assets/Xsens_DOT_Coordinate_System.png" Grid.Row="7" Grid.Column="5" Margin="1" />
 
 
     </Grid>

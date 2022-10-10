@@ -37,7 +37,7 @@ namespace XsensDOT_Offline_CSV_Processer
         private CsvFileDetailsModel _csv2BriefDetails;
 
         private readonly string _MEASUREMENT_MODE = "Sensor fusion Mode - Extended (Quaternion)";
-        private readonly bool _TRIM_DATA = false;
+        private readonly bool _TRIM_DATA = true;
 
         public MainPage()
         {
@@ -55,13 +55,15 @@ namespace XsensDOT_Offline_CSV_Processer
         {
             try
             {
-                Dot1CsvTimeStamp.Text = "";     // set the time stamp to 0 in case the button is pressed repeatedly
-                CsvTimeStampOffset.Text = "";   // set the offset time stamp to 0 in case the button is pressed repeatedly
+                Dot1CsvTimeStamp.Text = ""; // set the time stamp to 0 in case the button is pressed repeatedly
+                CsvTimeStampOffset.Text = ""; // set the offset time stamp to 0 in case the button is pressed repeatedly
                 Dot1DeviceTag.Text = "";
                 Dot1SyncStatus.Text = "";
 
-                _csvDataTable1 = SetUpInputDataTable("1"); // preps the table so we can insert data into it in the next step
-                _csv1BriefDetails = await BrowseAndLoadFilePath(LoadingCsv1ProgressBar, _csvDataTable1); // file selection and parsing
+                _csvDataTable1 =
+                    SetUpInputDataTable("1"); // preps the table so we can insert data into it in the next step
+                _csv1BriefDetails =
+                    await BrowseAndLoadFilePath(LoadingCsv1ProgressBar, _csvDataTable1); // file selection and parsing
 
                 // Update the UI details
                 _dotCsvPath1 = _csv1BriefDetails.FilePath; // to keep the global variable happy
@@ -78,13 +80,20 @@ namespace XsensDOT_Offline_CSV_Processer
                     ComputeAngles.IsEnabled = true; // enables the button
 
                     // calculate the time offset
-                    CsvTimeStampOffset.Text = "Δt = " + Math.Abs(_csv1BriefDetails.FirstTimeStamp - _csv2BriefDetails.FirstTimeStamp);
+                    CsvTimeStampOffset.Text = "Δt = " +
+                                              Math.Abs(_csv1BriefDetails.FirstTimeStamp -
+                                                       _csv2BriefDetails.FirstTimeStamp);
                 }
             }
             catch (ArgumentNullException excptDetails)
             {
                 NotifyUser(excptDetails.Message, ErrorTypes.Exception);
             }
+            finally
+            {
+                UIDataGrid.Columns.Clear();
+            }
+
         }
 
         /// <summary>
@@ -123,6 +132,10 @@ namespace XsensDOT_Offline_CSV_Processer
             catch (ArgumentNullException excptDetails)
             {
                 NotifyUser(excptDetails.Message, ErrorTypes.Exception);
+            }
+            finally
+            {
+                UIDataGrid.Columns.Clear();
             }
         }
 
