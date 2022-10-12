@@ -132,12 +132,11 @@
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Utilities\BooleanSecondChance.cs" />
-    <Compile Include="Utilities\Calculator.cs" />
     <Compile Include="Utilities\CsvFileDetailsModel.cs" />
     <Compile Include="Utilities\CsvParse.cs" />
     <Compile Include="Utilities\CsvWriter.cs" />
+    <Compile Include="Utilities\DataTableUtilities.cs" />
     <Compile Include="Utilities\DisplaySupport.cs" />
-    <Compile Include="Utilities\Enums.cs" />
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest">
@@ -208,6 +207,12 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="XsensDOT_Offline_CSV_Processer_TemporaryKey.pfx" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\XsensDOT_StandardLibrary\XsensDOT_StandardLibrary.csproj">
+      <Project>{0f5f934a-4316-45bb-b0ef-cbf758706363}</Project>
+      <Name>XsensDOT_StandardLibrary</Name>
+    </ProjectReference>
   </ItemGroup>
   <PropertyGroup Condition=" '$(VisualStudioVersion)' == '' or '$(VisualStudioVersion)' &lt; '14.0' ">
     <VisualStudioVersion>14.0</VisualStudioVersion>

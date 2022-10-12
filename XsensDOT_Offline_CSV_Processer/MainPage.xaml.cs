@@ -13,6 +13,7 @@ using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Media;
 using XsensDOT_Offline_CSV_Processer.Utilities;
+using XsensDOT_StandardLibrary;
 using IOException = System.IO.IOException;
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
@@ -60,8 +61,8 @@ namespace XsensDOT_Offline_CSV_Processer
                 Dot1DeviceTag.Text = "";
                 Dot1SyncStatus.Text = "";
 
-                _csvDataTable1 =
-                    SetUpInputDataTable("1"); // preps the table so we can insert data into it in the next step
+                //_csvDataTable1 = SetUpInputDataTable("1"); // preps the table so we can insert data into it in the next step
+                _csvDataTable1 = DataTableUtilities.SetUpInputDataTable("1", _dataSet);
                 _csv1BriefDetails =
                     await BrowseAndLoadFilePath(LoadingCsv1ProgressBar, _csvDataTable1); // file selection and parsing
 
@@ -93,7 +94,6 @@ namespace XsensDOT_Offline_CSV_Processer
             {
                 UIDataGrid.Columns.Clear();
             }
-
         }
 
         /// <summary>
@@ -108,7 +108,8 @@ namespace XsensDOT_Offline_CSV_Processer
                 Dot2DeviceTag.Text = "";
                 Dot2SyncStatus.Text = "";
 
-                _csvDataTable2 = SetUpInputDataTable("2"); // preps the table so we can insert data into it in the next step
+                //_csvDataTable2 = SetUpInputDataTable("2"); // preps the table so we can insert data into it in the next step
+                _csvDataTable2 = DataTableUtilities.SetUpInputDataTable("2", _dataSet);
                 _csv2BriefDetails = await BrowseAndLoadFilePath(LoadingCsv2ProgressBar, _csvDataTable2); // file selection and parsing
 
                 // Update the UI details
@@ -236,7 +237,8 @@ namespace XsensDOT_Offline_CSV_Processer
                         q2.Y = (float)(double)row[Header.Quat_Y + "2"];
                         q2.Z = (float)(double)row[Header.Quat_Z + "2"];
 
-                        jointAngle = Calculator.ComputeJointAngle(q1, q2);
+                        //jointAngle = Calculator.ComputeJointAngle(q1, q2);
+                        jointAngle = LibCalculator.ComputeJointAngle(q1, q2);
 
                         row[Header.JointAngle_X.ToString()] = jointAngle.X;
                         row[Header.JointAngle_Y.ToString()] = jointAngle.Y;
@@ -384,6 +386,7 @@ namespace XsensDOT_Offline_CSV_Processer
             }
         }
 
+        /*
         /// <summary>
         /// Create the tables skeleton for storing the data from the csv files
         /// </summary>
@@ -437,6 +440,7 @@ namespace XsensDOT_Offline_CSV_Processer
 
             return csvDataTable;
         }
+        */
 
         /// <summary>
         /// Check if the paths are good

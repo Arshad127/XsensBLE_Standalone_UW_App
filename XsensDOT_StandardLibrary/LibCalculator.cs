@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Numerics;
 
-namespace XsensDOT_Offline_CSV_Processer.Utilities
+namespace XsensDOT_StandardLibrary
 {
     /// <summary>
     /// Contains all the mathematical operations for Joint Calculations for the Xsens DOT Inertial Measurement Units.
     /// </summary>
-    public static class Calculator
+    public static class LibCalculator
     {
         /// <summary>
         /// Computes the joint angle in degrees given the two quaternion inputs.
@@ -15,10 +15,12 @@ namespace XsensDOT_Offline_CSV_Processer.Utilities
         {
             Vector3 eulerAngles = new Vector3();
             Quaternion deltaQuaternion = Quaternion.Identity;
-            deltaQuaternion = quat1 * Quaternion.Inverse(quat2);
+            //deltaQuaternion = quat1 * Quaternion.Inverse(quat2);
+            // difference is obtained from the difference between the inverse(quat_parent) x quat_child) 
+            deltaQuaternion = Quaternion.Inverse(quat1) * quat2;
             eulerAngles = ConvertQuaternionToDegreesEuler(deltaQuaternion);
 
-            
+
 
             if (eulerAngles.X > 180) { eulerAngles.X -= 360.0f; }
             if (eulerAngles.Y > 180) { eulerAngles.Y -= 360.0f; }
@@ -70,7 +72,7 @@ namespace XsensDOT_Offline_CSV_Processer.Utilities
         /// </summary>
         public static Vector3 ConvertQuaternionToDegreesEuler(Quaternion q)
         {
-           // roll / x
+            // roll / x
             double sinr_cosp = 2 * (q.W * q.X + q.Y * q.Z);
             double cosr_cosp = 1 - 2 * (q.X * q.X + q.Y * q.Y);
             double angleX = Math.Atan2(sinr_cosp, cosr_cosp);
@@ -115,6 +117,4 @@ namespace XsensDOT_Offline_CSV_Processer.Utilities
 
 
     }
-
-
 }

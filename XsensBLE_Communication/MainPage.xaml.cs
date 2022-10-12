@@ -126,8 +126,9 @@ namespace XsensBLE_Communication
                       Vector3 angle;
                       Quaternion deltaQuaternion = Quaternion.Identity;
 
-                      deltaQuaternion = quaternionsDictionary.ElementAt(0).Value * Quaternion.Inverse(quaternionsDictionary.ElementAt(1).Value);
-                      angle = ToEulerAngles(deltaQuaternion);
+                    //deltaQuaternion = quaternionsDictionary.ElementAt(0).Value * Quaternion.Inverse(quaternionsDictionary.ElementAt(1).Value);
+                    deltaQuaternion = Quaternion.Inverse(quaternionsDictionary.ElementAt(0).Value) * quaternionsDictionary.ElementAt(1).Value;
+                    angle = ToEulerAngles(deltaQuaternion);
 
                       if (angle.X > 180) { angle.X -= 360.0f; }
                       if (angle.Y > 180) { angle.Y -= 360.0f; }
