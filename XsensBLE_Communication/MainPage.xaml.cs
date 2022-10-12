@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Numerics;
@@ -26,6 +27,8 @@ using Windows.Devices.Bluetooth;
 using Windows.Security.Cryptography;
 using Windows.Storage.Streams;
 using Windows.UI.Composition;
+using Microsoft.VisualBasic;
+using XsensDOT_StandardLibrary;
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
 
@@ -118,32 +121,24 @@ namespace XsensBLE_Communication
                 NotifyUser($"[ERR] Cannot update the quaternions dictionary since {refDevice.UniqueDeviceName} is not in the dictionary.");
             }
 
-            if (quaternionsDictionary.Count >= 2) // If we dont have two devices queued up, can't get an angle can we now?
+            if (quaternionsDictionary.Count >= 2) // If we don't have two devices queued up, can't get an angle can we now?
             {
                 // Fire & Forget kinda task
                 Task.Run(() =>
                 {
-                      Vector3 angle;
-                      Quaternion deltaQuaternion = Quaternion.Identity;
+                    // Fetch the quaternions from the dict (making it more readable)
+                    Quaternion q1 = quaternionsDictionary.ElementAt(0).Value;
+                    Quaternion q2 = quaternionsDictionary.ElementAt(1).Value;
 
-                    //deltaQuaternion = quaternionsDictionary.ElementAt(0).Value * Quaternion.Inverse(quaternionsDictionary.ElementAt(1).Value);
-                    deltaQuaternion = Quaternion.Inverse(quaternionsDictionary.ElementAt(0).Value) * quaternionsDictionary.ElementAt(1).Value;
-                    angle = ToEulerAngles(deltaQuaternion);
+                    // Use the library commons calculator
+                    Vector3 angle = LibCalculator.ComputeJointAngle(q1, q2);
 
-                      if (angle.X > 180) { angle.X -= 360.0f; }
-                      if (angle.Y > 180) { angle.Y -= 360.0f; }
-                      if (angle.Z > 180) { angle.Z -= 360.0f; }
-
-                    // Update the UI
+                    // Update the UI -> Must dispatch since we are in a different process
                     var task = Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
                     {
-                        //InstantAngleX.Text = angle.X.ToString();
-                        //InstantAngleY.Text = angle.Y.ToString();
-                        //InstantAngleZ.Text = angle.Z.ToString();
-
-                        InstantAngleX.Text = Math.Round(angle.X, 1).ToString();
-                        InstantAngleY.Text = Math.Round(angle.Y, 1).ToString();
-                        InstantAngleZ.Text = Math.Round(angle.Z, 1).ToString();
+                        InstantAngleX.Text = Math.Round(angle.X, 1).ToString(CultureInfo.InvariantCulture);
+                        InstantAngleY.Text = Math.Round(angle.Y, 1).ToString(CultureInfo.InvariantCulture);
+                        InstantAngleZ.Text = Math.Round(angle.Z, 1).ToString(CultureInfo.InvariantCulture);
                     });
                 });
             }
@@ -407,7 +402,7 @@ namespace XsensBLE_Communication
                         // Make sure device isn't already present in the list.
                         if (FindBluetoothLEDeviceDisplay(deviceInfo.Id) == null)
                         {
-                            if (deviceInfo.Name != string.Empty && deviceInfo.Name.Equals(Constants.targetDeviceName))
+                            if (deviceInfo.Name != string.Empty && deviceInfo.Name.Equals(LibConstants.TargetDeviceName))
                             {
                                 // If device has a friendly name display it immediately.
                                 KnownDevices.Add(new BluetoothLEDeviceDisplay(deviceInfo));
@@ -449,7 +444,7 @@ namespace XsensBLE_Communication
                         {
                             deviceInfo.Update(deviceInfoUpdate);
                             // If device has been updated with a friendly name it's no longer unknown.
-                            if (deviceInfo.Name != String.Empty && deviceInfo.Name.Equals(Constants.targetDeviceName))
+                            if (deviceInfo.Name != String.Empty && deviceInfo.Name.Equals(LibConstants.TargetDeviceName))
                             {
                                 KnownDevices.Add(new BluetoothLEDeviceDisplay(deviceInfo));
                                 UnknownDevices.Remove(deviceInfo);

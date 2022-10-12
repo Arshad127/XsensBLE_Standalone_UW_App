@@ -4,7 +4,7 @@ using System.Text;
 
 namespace XsensDOT_StandardLibrary
 {
-    public class LibConstants
+    public static class LibConstants
     {
         public static readonly Guid BatteryCharacteristicUuid = Guid.Parse("15173001-4947-11e9-8646-d663bd873d93");
         public static readonly Guid BatteryServiceUuid = Guid.Parse("15173000-4947-11e9-8646-d663bd873d93");
@@ -13,6 +13,6 @@ namespace XsensDOT_StandardLibrary
         public static readonly Guid MediumPayloadCharacteristicUuid = Guid.Parse("15172003-4947-11e9-8646-d663bd873d93");
         public static readonly Guid LongPayloadCharacteristicUuid = Guid.Parse("15172002-4947-11e9-8646-d663bd873d93");
         public static readonly Guid ControlCharacteristicUuid = Guid.Parse("15172001-4947-11e9-8646-d663bd873d93");
-        public const string targetDeviceName = "Xsens DOT";
+        public const string TargetDeviceName = "Xsens DOT";
     }
 }

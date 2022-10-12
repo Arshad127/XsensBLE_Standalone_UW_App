@@ -13,6 +13,7 @@ using Windows.Devices.Bluetooth.GenericAttributeProfile;
 using Windows.Devices.Enumeration;
 using Windows.Security.Cryptography;
 using Windows.Storage.Streams;
+using XsensDOT_StandardLibrary;
 
 namespace XsensBLE_Communication
 {
@@ -26,6 +27,7 @@ namespace XsensBLE_Communication
         #endregion
 
         #region Class Variables and Constants
+        /*
         private static readonly Guid BatteryCharacteristicUuid = Guid.Parse("15173001-4947-11e9-8646-d663bd873d93");
         private static readonly Guid BatteryServiceUuid = Guid.Parse("15173000-4947-11e9-8646-d663bd873d93");
         private static readonly Guid MeasurementServiceUuid = Guid.Parse("15172000-4947-11e9-8646-d663bd873d93");
@@ -33,7 +35,8 @@ namespace XsensBLE_Communication
         private static readonly Guid MediumPayloadCharacteristicUuid = Guid.Parse("15172003-4947-11e9-8646-d663bd873d93");
         private static readonly Guid LongPayloadCharacteristicUuid = Guid.Parse("15172002-4947-11e9-8646-d663bd873d93");
         private static readonly Guid ControlCharacteristicUuid = Guid.Parse("15172001-4947-11e9-8646-d663bd873d93");
-        public static readonly string targetDeviceName = "Xsens DOT";
+        public static readonly string TargetDeviceName = "Xsens DOT";
+        */
 
         private bool isBatterySubscribed = false;
         private bool isMeasurementSubscribed = false;
@@ -66,7 +69,7 @@ namespace XsensBLE_Communication
 
         public XsensDotDevice(DeviceInformation deviceInfoIn, MainPage rootPage)
         {
-            if (!deviceInfoIn.Name.Equals(targetDeviceName))
+            if (!deviceInfoIn.Name.Equals(LibConstants.TargetDeviceName))
             {
                 throw new InvalidDataException("Only Xsens DOT BLE devices can be added.");
             }
@@ -262,13 +265,13 @@ namespace XsensBLE_Communication
             if (mediumPayLoadCharacteristic == null) // hunt for that payload characteristic required to scream data back to us
             {
                 await GetServices(); // gets all the services on the device
-                mediumPayLoadCharacteristic = await GetSpecificCharacteristic(MeasurementServiceUuid, MediumPayloadCharacteristicUuid);
+                mediumPayLoadCharacteristic = await GetSpecificCharacteristic(LibConstants.MeasurementServiceUuid, LibConstants.MediumPayloadCharacteristicUuid);
             }
 
             if (controlCharacteristic == null) // get the control characteristics
             {
                 await GetServices(); // gets all the services on the device
-                controlCharacteristic = await GetSpecificCharacteristic(MeasurementServiceUuid, ControlCharacteristicUuid);
+                controlCharacteristic = await GetSpecificCharacteristic(LibConstants.MeasurementServiceUuid, LibConstants.ControlCharacteristicUuid);
             }
 
             // Doing the Subscribing
@@ -367,7 +370,7 @@ namespace XsensBLE_Communication
             if (batteryCharacteristic == null) // hunt for that battery service
             {
                 await GetServices(); // gets all the services on the device
-                batteryCharacteristic = await GetSpecificCharacteristic(BatteryServiceUuid, BatteryCharacteristicUuid);
+                batteryCharacteristic = await GetSpecificCharacteristic(LibConstants.BatteryServiceUuid, LibConstants.BatteryCharacteristicUuid);
             }
 
             // Doing the Subscribing

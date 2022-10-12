@@ -120,7 +120,6 @@
       <DependentUpon>App.xaml</DependentUpon>
     </Compile>
     <Compile Include="xSensDOTDevice.cs" />
-    <Compile Include="Constants.cs" />
     <Compile Include="DispatcherTaskExtensions.cs" />
     <Compile Include="DisplayHelpers.cs" />
     <Compile Include="MainPage.xaml.cs">
@@ -191,6 +190,12 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Styles\" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\XsensDOT_StandardLibrary\XsensDOT_StandardLibrary.csproj">
+      <Project>{0f5f934a-4316-45bb-b0ef-cbf758706363}</Project>
+      <Name>XsensDOT_StandardLibrary</Name>
+    </ProjectReference>
   </ItemGroup>
   <PropertyGroup Condition=" '$(VisualStudioVersion)' == '' or '$(VisualStudioVersion)' &lt; '14.0' ">
     <VisualStudioVersion>14.0</VisualStudioVersion>
