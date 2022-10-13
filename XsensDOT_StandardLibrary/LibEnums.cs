@@ -65,6 +65,8 @@ namespace XsensDOT_StandardLibrary
     {
         BatteryDetails = 27,
         MeasurementGeneralDetails = 28,
+        OrientationResetStatus = 29,
+        OrientationResetControlData = 30,
         HighFidelityWithMag = 1,
         ExtendedQuaternion = 2,
         CompleteQuaternion = 3,
@@ -83,5 +85,12 @@ namespace XsensDOT_StandardLibrary
         CustomMode3 = 24,
         CustomMode4 = 25,
         CustomMode5 = 26
+    }
+
+    public enum HeadingResults
+    {
+        ResetHeading = 1,
+        RevertHeadingToDefault = 7,
+        DefaultStatus = 8
     }
 }

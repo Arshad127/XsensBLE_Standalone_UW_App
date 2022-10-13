@@ -119,7 +119,9 @@
     <Compile Include="App.xaml.cs">
       <DependentUpon>App.xaml</DependentUpon>
     </Compile>
-    <Compile Include="xSensDOTDevice.cs" />
+    <Compile Include="BLEFeatureBattery.cs" />
+    <Compile Include="IBLEFeature.cs" />
+    <Compile Include="XsensDotDevice.cs" />
     <Compile Include="DispatcherTaskExtensions.cs" />
     <Compile Include="DisplayHelpers.cs" />
     <Compile Include="MainPage.xaml.cs">

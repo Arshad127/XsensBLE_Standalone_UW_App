@@ -21,7 +21,6 @@ namespace XsensDOT_StandardLibrary
             eulerAngles = ConvertQuaternionToDegreesEuler(deltaQuaternion);
 
 
-
             if (eulerAngles.X > 180) { eulerAngles.X -= 360.0f; }
             if (eulerAngles.Y > 180) { eulerAngles.Y -= 360.0f; }
             if (eulerAngles.Z > 180) { eulerAngles.Z -= 360.0f; }
@@ -31,6 +30,7 @@ namespace XsensDOT_StandardLibrary
 
         /// <summary>
         /// Method to convert quaternion coordinates into euler coordinates (radians).
+        /// Bit of a math method here from https://stackoverflow.com/questions/70462758/c-sharp-how-to-convert-quaternions-to-euler-angles-xyz
         /// </summary>
         public static Vector3 ConvertQuaternionToRadianEuler(Quaternion q)
         {
@@ -69,6 +69,7 @@ namespace XsensDOT_StandardLibrary
 
         /// <summary>
         /// Method to convert quaternion coordinates into euler coordinates (degrees).
+        /// Bit of a math method here from https://stackoverflow.com/questions/70462758/c-sharp-how-to-convert-quaternions-to-euler-angles-xyz
         /// </summary>
         public static Vector3 ConvertQuaternionToDegreesEuler(Quaternion q)
         {

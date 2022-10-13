@@ -386,62 +386,6 @@ namespace XsensDOT_Offline_CSV_Processer
             }
         }
 
-        /*
-        /// <summary>
-        /// Create the tables skeleton for storing the data from the csv files
-        /// </summary>
-        private DataTable SetUpInputDataTable(string identifier)
-        {
-            string tableName = "XSENS_MEASUREMENT_DATA_CSV_DOT_" + identifier;
-
-            // need to check for duplicate tables in the dataset.
-            // be weary of the race conditions given there is only one dataset being access by two tables
-            // ****CHECK RACE CONDITIONS*****
-            if (_dataSet == null)
-            {
-                _dataSet = new DataSet();
-            }
-            else if (_dataSet.Tables.Contains(tableName))
-            {
-                // remove duplicate tables else problemo
-                _dataSet.Tables.Remove(tableName);
-            }
-
-            DataTable csvDataTable = new DataTable(tableName);
-
-            // Column
-            csvDataTable.Columns.Add(Header.PacketCount + identifier, typeof(int));
-
-            // Unique Column & primary key column
-            var dtColumn = new DataColumn();
-            dtColumn.DataType = typeof(long);
-            dtColumn.ColumnName = Header.SampleTimeFine.ToString(); // NO IDENTIFIER
-            dtColumn.AutoIncrement = false;
-            dtColumn.ReadOnly = true;
-            dtColumn.Unique = true;
-            csvDataTable.Columns.Add(dtColumn);
-
-            // Workaround to create the unique primary key for this table
-            csvDataTable.PrimaryKey = new DataColumn[] {csvDataTable.Columns[Header.SampleTimeFine.ToString()] }; // NO IDENTIFIER
-
-            csvDataTable.Columns.Add(Header.Quat_W + identifier, typeof(double));
-            csvDataTable.Columns.Add(Header.Quat_X + identifier, typeof(double));
-            csvDataTable.Columns.Add(Header.Quat_Y + identifier, typeof(double));
-            csvDataTable.Columns.Add(Header.Quat_Z + identifier, typeof(double));
-            //csvDataTable.Columns.Add(Header.FreeAcc_X + identifier, typeof(double));
-            //csvDataTable.Columns.Add(Header.FreeAcc_Y + identifier, typeof(double));
-            //csvDataTable.Columns.Add(Header.FreeAcc_Z + identifier, typeof(double));
-            //csvDataTable.Columns.Add(Header.Status + identifier, typeof(int));
-
-
-
-            // add the table to the dataset
-            _dataSet.Tables.Add(csvDataTable);
-
-            return csvDataTable;
-        }
-        */
-
         /// <summary>
         /// Check if the paths are good
         /// </summary>

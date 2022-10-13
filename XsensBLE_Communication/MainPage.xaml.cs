@@ -16,18 +16,8 @@ using Windows.Foundation;
 using Windows.Foundation.Collections;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
-using Windows.UI.Xaml.Controls.Primitives;
-using Windows.UI.Xaml.Data;
-using Windows.UI.Xaml.Input;
-using Windows.UI.Xaml.Media;
-using Windows.UI.Xaml.Navigation;
 using SDKTemplate;
 using Windows.UI.Core;
-using Windows.Devices.Bluetooth;
-using Windows.Security.Cryptography;
-using Windows.Storage.Streams;
-using Windows.UI.Composition;
-using Microsoft.VisualBasic;
 using XsensDOT_StandardLibrary;
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
@@ -144,49 +134,6 @@ namespace XsensBLE_Communication
             }
         }
 
-
-        // Bit of a math method here from https://stackoverflow.com/questions/70462758/c-sharp-how-to-convert-quaternions-to-euler-angles-xyz
-        public static Vector3 ToEulerAngles(Quaternion q)
-        {
-            Vector3 angleInRad = new Vector3();
-            Vector3 angleInDeg = new Vector3();
-
-            // roll / x
-            double sinr_cosp = 2 * (q.W * q.X + q.Y * q.Z);
-            double cosr_cosp = 1 - 2 * (q.X * q.X + q.Y * q.Y);
-            angleInRad.X = (float)Math.Atan2(sinr_cosp, cosr_cosp);
-
-            // pitch / y
-            double sinp = 2 * (q.W * q.Y - q.Z * q.X);
-            if (Math.Abs(sinp) >= 1)
-            {
-                if (sinp >= 0) // positive
-                {
-                    angleInRad.Y = (float)Math.PI / 2;
-                }
-                else // she negative
-                {
-                    angleInRad.Y = -(float)Math.PI / 2;
-                }
-            }
-            else
-            {
-                angleInRad.Y = (float)Math.Asin(sinp);
-            }
-
-            // yaw / z
-            double siny_cosp = 2 * (q.W * q.Z + q.X * q.Y);
-            double cosy_cosp = 1 - 2 * (q.Y * q.Y + q.Z * q.Z);
-            angleInRad.Z = (float)Math.Atan2(siny_cosp, cosy_cosp);
-
-            angleInDeg.X = 180.0f / (float)Math.PI * angleInRad.X;
-            angleInDeg.Y = 180.0f / (float)Math.PI * angleInRad.Y;
-            angleInDeg.Z = 180.0f / (float)Math.PI * angleInRad.Z;
-
-            return angleInDeg;
-        }
-
-
         public MainPage()
         {
             this.InitializeComponent();
@@ -200,7 +147,13 @@ namespace XsensBLE_Communication
             StreamingButton.Content = $"Start Streaming ({xSensDotDevicesList.Count})";
             ResetHeadingButton.Content = $"Reset Heading ({xSensDotDevicesList.Count})";
             SynchroniseButton.Content = $"Synchronise ({xSensDotDevicesList.Count})";
+            StopStreaming.Content = $"Stop Streaming ({xSensDotDevicesList.Count})";
 
+            StopStreaming.IsEnabled = false;
+            ResetHeadingButton.IsEnabled = false;
+            WeWantEulerToggle.IsEnabled = true;
+            DiscoveringButton.IsEnabled = true;
+            QueueDeviceButton.IsEnabled = true;
         }
 
         /// <summary>
@@ -259,6 +212,7 @@ namespace XsensBLE_Communication
             StreamingButton.Content = $"Start Streaming ({xSensDotDevicesList.Count})";
             SynchroniseButton.Content = $"Synchronise ({xSensDotDevicesList.Count})";
             ResetHeadingButton.Content = $"Reset Heading ({xSensDotDevicesList.Count})";
+            StopStreaming.Content = $"Stop Streaming ({xSensDotDevicesList.Count})";
         }
 
         private async void Subscribe2BatteryButton_Click(object sender, RoutedEventArgs e)
@@ -279,7 +233,18 @@ namespace XsensBLE_Communication
 
         private async void ResetHeadingButton_Click(object sender, RoutedEventArgs e)
         {
-            NotifyUser("[err] Button Not Mapped");
+            // makes sure we have devices queued up to connect to and get battery levels, else what's the point man?
+            if (xSensDotDevicesList.Count > 0)
+            {
+                foreach (var device in xSensDotDevicesList)
+                {
+                    await device.ResetHeading();
+                }
+            }
+            else
+            {
+                NotifyUser($"[err] No devices considered for Heading Data Read");
+            }
 
         }
 
@@ -288,6 +253,9 @@ namespace XsensBLE_Communication
 
         }
 
+        /// <summary>
+        /// Starts streaming on all the devices queued
+        /// </summary>
         private void Subscribe2MeasurementButton_Click(object sender, RoutedEventArgs e)
         {
 
@@ -301,6 +269,14 @@ namespace XsensBLE_Communication
 
                     //device.StreamSplitThread();
                 }
+                isStreaming = true;
+                StreamingButton.IsEnabled = false;
+                StopStreaming.IsEnabled = true;
+                ResetHeadingButton.IsEnabled = true;
+                SynchroniseButton.IsEnabled = false;
+                WeWantEulerToggle.IsEnabled = false;
+                DiscoveringButton.IsEnabled = false;
+                QueueDeviceButton.IsEnabled = false;
             }
             else
             {
@@ -308,6 +284,27 @@ namespace XsensBLE_Communication
             }
                     
         }
+
+        /// <summary>
+        /// Stops streaming on all devices queued
+        /// </summary>
+        private void StopStreaming_Click(object sender, RoutedEventArgs e)
+        {
+            foreach (var device in xSensDotDevicesList)
+            {
+                device.UnSubscribeToMeasurement(payloadType);
+            }
+            isStreaming = false;
+            StopStreaming.IsEnabled = false;
+            ResetHeadingButton.IsEnabled = false;
+            SynchroniseButton.IsEnabled = true;
+            StreamingButton.IsEnabled = true;
+            WeWantEulerToggle.IsEnabled = true;
+            DiscoveringButton.IsEnabled = true;
+            QueueDeviceButton.IsEnabled = true;
+        }
+
+
         #endregion
 
         #region Device Discovery Methods
@@ -527,5 +524,7 @@ namespace XsensBLE_Communication
                 payloadType = PayloadType.CompleteQuaternion;
             }
         }
+
+
     }
 }
