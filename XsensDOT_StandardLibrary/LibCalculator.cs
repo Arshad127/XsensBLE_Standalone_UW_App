@@ -13,12 +13,14 @@ namespace XsensDOT_StandardLibrary
         /// </summary>
         public static Vector3 ComputeJointAngle(Quaternion quat1, Quaternion quat2)
         {
-            Vector3 eulerAngles = new Vector3();
-            Quaternion deltaQuaternion = Quaternion.Identity;
-            //deltaQuaternion = quat1 * Quaternion.Inverse(quat2);
-            // difference is obtained from the difference between the inverse(quat_parent) x quat_child) 
-            deltaQuaternion = Quaternion.Inverse(quat1) * quat2;
-            eulerAngles = ConvertQuaternionToDegreesEuler(deltaQuaternion);
+            // sensor 1 = Proximal segment
+            // sensor 2 = Distal segment
+            //Quaternion deltaQuaternion = Quaternion.Conjugate(quat1) * quat2;
+            Quaternion deltaQuaternion = Quaternion.Multiply(Quaternion.Conjugate(quat1), quat2);
+
+            
+
+            Vector3 eulerAngles = ConvertQuaternionToEulerMethod2(deltaQuaternion);
 
 
             if (eulerAngles.X > 180) { eulerAngles.X -= 360.0f; }
@@ -29,49 +31,64 @@ namespace XsensDOT_StandardLibrary
         }
 
         /// <summary>
-        /// Method to convert quaternion coordinates into euler coordinates (radians).
-        /// Bit of a math method here from https://stackoverflow.com/questions/70462758/c-sharp-how-to-convert-quaternions-to-euler-angles-xyz
+        /// Method to convert quaternion coordinates into euler coordinates (in degrees).
+        /// Bit of a math method here from [insert source]
         /// </summary>
-        public static Vector3 ConvertQuaternionToRadianEuler(Quaternion q)
+        public static Vector3 ConvertQuaternionToEulerMethod2(Quaternion q)
         {
-            Vector3 angleInRad = new Vector3();
+            // roll (x-axis rotation)
+            double sinRcosP = 2 * (q.W * q.X + q.Y * q.Z);
+            double cosRcosP = 1 - 2 * (q.X * q.X + q.Y * q.Y);
+            double angleX = Math.Atan2(sinRcosP, cosRcosP);
 
-            // roll / x
-            double sinr_cosp = 2 * (q.W * q.X + q.Y * q.Z);
-            double cosr_cosp = 1 - 2 * (q.X * q.X + q.Y * q.Y);
-            angleInRad.X = (float)Math.Atan2(sinr_cosp, cosr_cosp);
+            // pitch (y-axis rotation)
+            double sinP = 2 * (q.W * q.Y - q.Z * q.X);
+            double angleY = Math.Asin(sinP);
 
-            // pitch / y
-            double sinp = 2 * (q.W * q.Y - q.Z * q.X);
-            if (Math.Abs(sinp) >= 1)
+            /*
+            if (Math.Abs(sinP) >= 1)
             {
-                if (sinp >= 0) // positive
-                {
-                    angleInRad.Y = (float)Math.PI / 2;
-                }
-                else // she negative
-                {
-                    angleInRad.Y = -(float)Math.PI / 2;
-                }
+                angleY = CopySign(Math.PI / 2, sinP);
             }
             else
             {
-                angleInRad.Y = (float)Math.Asin(sinp);
+                angleY = Math.Asin(sinP);
             }
+            */
 
-            // yaw / z
-            double siny_cosp = 2 * (q.W * q.Z + q.X * q.Y);
-            double cosy_cosp = 1 - 2 * (q.Y * q.Y + q.Z * q.Z);
-            angleInRad.Z = (float)Math.Atan2(siny_cosp, cosy_cosp);
+            // yaw (z-axis rotation)
+            double sinYcosP = 2 * (q.W * q.Z + q.X * q.Y);
+            double cosYcosP = 1 - 2 * (q.Y * q.Y + q.Z * q.Z);
+            double angleZ = Math.Atan2(sinYcosP, cosYcosP);
 
-            return angleInRad;
+            // convert to degrees
+            angleX = 180.0 / Math.PI * angleX;
+            angleY = 180.0f / Math.PI * angleY;
+            angleZ = 180.0f / Math.PI * angleZ;
+
+            // roundup values
+            angleX = Math.Round(angleX, 6);
+            angleY = Math.Round(angleY, 6);
+            angleZ = Math.Round(angleZ, 6);
+
+            return new Vector3((float)angleX, (float)angleY, (float)angleZ); ;
         }
 
         /// <summary>
-        /// Method to convert quaternion coordinates into euler coordinates (degrees).
+        /// Method to mimic the copysign() method from C++. Method takes two arguments.
+        /// Method returns the first argument with the sign of the second argument.
+        /// https://cplusplus.com/reference/cmath/copysign/
+        /// </summary>
+        public static double CopySign(double arg1, double arg2)
+        {
+            return Math.Sign(arg2) * Math.Abs(arg1);
+        }
+
+        /// <summary>
+        /// Method to convert quaternion coordinates into euler coordinates (in degrees).
         /// Bit of a math method here from https://stackoverflow.com/questions/70462758/c-sharp-how-to-convert-quaternions-to-euler-angles-xyz
         /// </summary>
-        public static Vector3 ConvertQuaternionToDegreesEuler(Quaternion q)
+        public static Vector3 ConvertQuaternionToEulerMethod1(Quaternion q)
         {
             // roll / x
             double sinr_cosp = 2 * (q.W * q.X + q.Y * q.Z);
