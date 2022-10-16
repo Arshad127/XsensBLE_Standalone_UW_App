@@ -17,6 +17,7 @@ namespace XsensDOT_StandardLibrary
             // sensor 2 = Distal segment
             //Quaternion deltaQuaternion = Quaternion.Conjugate(quat1) * quat2;
             Quaternion deltaQuaternion = Quaternion.Multiply(Quaternion.Conjugate(quat1), quat2);
+            // adding a change for git
 
             
 
